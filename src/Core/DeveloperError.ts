@@ -19,21 +19,20 @@ import { defined } from './defined';
  * @see RuntimeError
  */
 
-class DeveloperError {
-    readonly name: string;
+class DeveloperError extends Error {
+    /**
+     * 'DeveloperError' indicating that this exception was thrown due to a developer error.
+     * @type {String}
+     * @readonly
+     */
+    name = 'DeveloperError';
 
-    readonly message: string;
+    message: any;
 
     readonly stack: string;
 
-    constructor(message: string) {
-        /**
-         * 'DeveloperError' indicating that this exception was thrown due to a developer error.
-         * @type {String}
-         * @readonly
-         */
-        this.name = 'DeveloperError';
-
+    constructor(message?: string) {
+        super();
         /**
          * The explanation for why this exception was thrown.
          * @type {String}
@@ -67,14 +66,14 @@ class DeveloperError {
         return str;
     }
 
-    private static throwInstantiationError(): void {
+    static throwInstantiationError(): void {
         throw new DeveloperError('This function defines an interface and should not be called directly.');
     }
 }
 
-if (defined(Object.create)) {
-    DeveloperError.prototype = Object.create(Error.prototype);
-    DeveloperError.prototype.constructor = DeveloperError;
-}
+// if (defined(Object.create)) {
+//     DeveloperError.prototype = Object.create(Error.prototype);
+//     DeveloperError.prototype.constructor = DeveloperError;
+// }
 
 export { DeveloperError };

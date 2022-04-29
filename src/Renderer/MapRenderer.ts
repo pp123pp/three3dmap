@@ -1,18 +1,26 @@
-import { LinearToneMapping, sRGBEncoding, WebGLRenderer, WebGLRendererParameters } from 'three';
+import { LinearToneMapping, sRGBEncoding, Vector2, WebGLRenderer, WebGLRendererParameters } from 'three';
+
+const drawingBufferSize = new Vector2();
 
 export default class MapRenderer extends WebGLRenderer {
-    constructor(container: HTMLElement, options: WebGLRendererParameters) {
+    constructor(options: WebGLRendererParameters = {}) {
         super(options);
 
-        const { clientWidth, clientHeight } = container;
-
-        this.setSize(clientWidth, clientHeight);
-        this.setViewport(0, 0, clientWidth, clientHeight);
         this.toneMapping = LinearToneMapping;
         this.toneMappingExposure = 1.0;
         this.outputEncoding = sRGBEncoding;
         this.autoClear = false;
+        this.setClearColor(0xff000);
+    }
 
-        container.appendChild(this.domElement);
+    /**
+     * 返回当前绘图缓冲区的尺寸
+     *
+     * @readonly
+     * @type {Vector2}
+     * @memberof MapRenderer
+     */
+    get drawingBufferSize(): Vector2 {
+        return this.getDrawingBufferSize(drawingBufferSize);
     }
 }

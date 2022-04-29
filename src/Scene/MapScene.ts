@@ -1,12 +1,172 @@
+import { CesiumColor } from '@/Core/CesiumColor';
+import { incrementWrap } from '@/Core/CesiumMath';
+import { defaultValue } from '@/Core/defaultValue';
+import { defined } from '@/Core/defined';
 import Emit from '@/Core/Emit';
+import { PrimitiveCollection } from '@/Core/PrimitiveCollection';
+import { RenderCollection } from '@/Core/RenderCollection';
+import RequestScheduler from '@/Core/RequestScheduler';
+import { SceneMode } from '@/Core/SceneMode';
+import { TweenCollection } from '@/Core/TweenCollection';
+import { ComputeEngine } from '@/Renderer/ComputeEngine';
+import Context from '@/Renderer/Context';
 import MapRenderer from '@/Renderer/MapRenderer';
-import { Scene, WebGLRendererParameters } from 'three';
+import { PerspectiveCamera, Scene, Vector2, WebGLRendererParameters, WebGLRenderTarget } from 'three';
+import { EffectComposerCollection } from './EffectComposerCollection';
+import { FrameState } from './FrameState';
+import MapCamera from './MapCamera';
+import PerspectiveFrustumCamera from './PerspectiveFrustumCamera';
 
 interface SceneOptions {
     renderState?: WebGLRendererParameters;
     enabledEffect?: false;
     requestRenderMode?: false;
+    canvas?: HTMLCanvasElement;
     [name: string]: any;
+}
+
+export interface PassesInterface {
+    render: boolean;
+    pick: boolean;
+    depth: boolean;
+    postProcess: boolean;
+    offscreen: boolean;
+}
+
+function updateFrameNumber(scene: MapScene, frameNumber: number) {
+    const frameState = scene.frameState;
+    frameState.frameNumber = frameNumber;
+}
+
+function tryAndCatchError(scene: MapScene, functionToExecute: any) {
+    try {
+        functionToExecute(scene);
+    } catch (error) {
+        console.log(error);
+        scene.renderError.raiseEvent(scene, error);
+
+        if (scene.rethrowRenderErrors) {
+            throw error;
+        }
+    }
+}
+
+function prePassesUpdate(scene: MapScene) {
+    // scene._jobScheduler.resetBudgets();
+
+    const frameState = scene.frameState;
+    // const primitives = scene.primitives;
+    // primitives.prePassesUpdate(frameState);
+
+    // if (defined(scene.globe)) {
+    //     scene.globe.update(frameState);
+    // }
+
+    // scene._picking.update();
+    // frameState.creditDisplay.update();
+}
+
+function postPassesUpdate(scene: MapScene) {
+    const frameState = scene.frameState;
+    // const primitives = scene.primitives;
+    // primitives.postPassesUpdate(frameState);
+
+    RequestScheduler.update();
+}
+
+function render(scene: MapScene) {
+    const frameState = scene.frameState;
+
+    scene.updateFrameState();
+
+    frameState.passes.render = true;
+
+    // if (defined(scene.globe)) {
+    //     scene.globe.beginFrame(frameState);
+
+    //     if (!scene.globe.tilesLoaded) {
+    //         scene._renderRequested = true;
+    //     }
+    // }
+
+    scene.updateAndExecuteCommands(scene.backgroundColor);
+
+    // if (defined(scene.globe)) {
+    //     scene.globe.endFrame(frameState);
+
+    //     if (!scene.globe.tilesLoaded) {
+    //         scene._renderRequested = true;
+    //     }
+    // }
+}
+
+function updateAndRenderPrimitives(scene: MapScene) {
+    const frameState = scene.frameState;
+
+    // scene._groundPrimitives.update(frameState);
+    scene.primitives.update(frameState);
+
+    // updateDebugFrustumPlanes(scene);
+    // updateShadowMaps(scene);
+
+    // if (scene._globe) {
+    //     scene._globe.render(frameState);
+    // }
+
+    for (const command of frameState.commandList) {
+        scene.renderCollection.add(command);
+    }
+}
+
+const executeComputeCommands = (scene: MapScene) => {
+    const commandList = scene.frameState.computeCommandList;
+    const length = commandList.length;
+    for (let i = 0; i < length; ++i) {
+        commandList[i].execute(scene.computeEngine);
+    }
+};
+
+/**
+ * 执行渲染
+ * @param firstViewport
+ * @param scene
+ * @param backgroundColor
+ */
+function executeCommandsInViewport(firstViewport: boolean, scene: MapScene, backgroundColor: CesiumColor) {
+    // const environmentState = scene._environmentState;
+    // const view = scene._view;
+    // const renderTranslucentDepthForPick =
+    //   environmentState.renderTranslucentDepthForPick;
+
+    // if (!firstViewport && !renderTranslucentDepthForPick) {
+    //     scene.frameState.commandList.length = 0;
+    // }
+
+    // if (!renderTranslucentDepthForPick) {
+    //     updateAndRenderPrimitives(scene);
+    // }
+
+    // view.createPotentiallyVisibleSet(scene);
+
+    if (firstViewport) {
+        executeComputeCommands(scene);
+    }
+
+    if (!firstViewport) {
+        scene.frameState.commandList.length = 0;
+    }
+
+    updateAndRenderPrimitives(scene);
+
+    // executeCommands(scene, passState);
+    // scene.renderer.clear();
+    // scene.renderer.render(scene, scene.activeCamera);
+    scene.renderer.autoClear = false;
+    scene.renderer.clear();
+    // scene.skyBox.render();
+    // scene.effectComposerCollection.render();
+
+    scene.renderer.render(scene, scene.camera);
 }
 
 export default class MapScene extends Scene {
@@ -16,9 +176,174 @@ export default class MapScene extends Scene {
     readonly postUpdate = new Emit();
     readonly preRender = new Emit();
 
+    readonly mapCamera: MapCamera;
+    readonly context: Context;
+    readonly frameState: FrameState;
+
+    readonly canvas: HTMLCanvasElement;
+
+    protected _renderRequested = true;
+    private shaderFrameCount = 0;
+
+    readonly tweens = new TweenCollection();
+
+    readonly mode = SceneMode.COLUMBUS_VIEW;
+
+    readonly computeEngine: ComputeEngine;
+
+    requestRenderMode: boolean;
+    rethrowRenderErrors = false;
+
+    readonly primitives = new PrimitiveCollection();
+    readonly renderCollection = new RenderCollection();
+
+    public backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
+    readonly effectComposerCollection: EffectComposerCollection;
+
     constructor(options: SceneOptions) {
         super();
 
-        this.renderer = new MapRenderer(this, options.renderState);
+        this.renderer = new MapRenderer(options.renderState);
+
+        this.mapCamera = new MapCamera(this, {
+            aspect: this.drawingBufferSize.width / this.drawingBufferSize.height,
+            near: 0.1,
+            far: 10000000000,
+        });
+
+        this.context = new Context(this);
+
+        this.canvas = this.renderer.domElement;
+
+        this.computeEngine = new ComputeEngine(this, this.context);
+
+        this.frameState = new FrameState(this);
+
+        this.requestRenderMode = defaultValue(options.requestRenderMode, false) as boolean;
+
+        this.add(this.renderCollection);
+
+        this.effectComposerCollection = new EffectComposerCollection(this);
+    }
+
+    get camera(): PerspectiveFrustumCamera {
+        return this.mapCamera.frustum;
+    }
+
+    get drawingBufferSize(): Vector2 {
+        return this.renderer.drawingBufferSize;
+    }
+
+    get colorBuffer(): WebGLRenderTarget {
+        return this.context.colorFrameBuffer;
+    }
+
+    get pixelRatio(): number {
+        return this.frameState.pixelRatio;
+    }
+
+    set pixelRatio(value: number) {
+        this.frameState.pixelRatio = value;
+    }
+
+    initializeFrame(): void {
+        if (this.shaderFrameCount++ === 120) {
+            this.shaderFrameCount = 0;
+        }
+        this.tweens.update();
+
+        // this.camera.update(this._mode);
+
+        // this._globeHeight = getGlobeHeight(this);
+        // this._cameraUnderground = isCameraUnderground(this);
+
+        // this.screenSpaceCameraController.update();
+        this.mapCamera.update(this.mode);
+        this.mapCamera._updateCameraChanged();
+    }
+
+    requestRender(): void {
+        this._renderRequested = true;
+    }
+
+    setSize(container: Element): void {
+        this.mapCamera.setSize(container);
+        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        this.effectComposerCollection.setSize(container);
+    }
+
+    render(time: number): void {
+        const frameState = this.frameState;
+        frameState.newFrame = false;
+
+        const cameraChanged = true;
+
+        const shouldRender = !this.requestRenderMode || this._renderRequested || cameraChanged;
+
+        if (shouldRender) {
+            this._renderRequested = false;
+
+            const frameNumber = incrementWrap(frameState.frameNumber, 15000000.0, 1.0);
+            updateFrameNumber(this, frameNumber);
+            frameState.newFrame = true;
+        }
+
+        tryAndCatchError(this, prePassesUpdate);
+
+        /**
+         *
+         * Passes update. Add any passes here
+         *
+         */
+        // if (this.primitives.show) {
+        //     tryAndCatchError(this, updateMostDetailedRayPicks);
+        //     tryAndCatchError(this, updatePreloadPass);
+        //     tryAndCatchError(this, updatePreloadFlightPass);
+        //     if (!shouldRender) {
+        //         tryAndCatchError(this, updateRequestRenderModeDeferCheckPass);
+        //     }
+        // }
+
+        this.postUpdate.raiseEvent(this, time);
+
+        if (shouldRender) {
+            this.preRender.raiseEvent(this, time);
+            // frameState.creditDisplay.beginFrame();
+            tryAndCatchError(this, render);
+        }
+
+        tryAndCatchError(this, postPassesUpdate);
+    }
+
+    clearPasses(passes: PassesInterface): void {
+        passes.render = false;
+        passes.pick = false;
+        passes.depth = false;
+        passes.postProcess = false;
+        passes.offscreen = false;
+    }
+
+    updateFrameState(): void {
+        const camera = this.mapCamera;
+
+        const frameState = this.frameState;
+        frameState.commandList.length = 0;
+        frameState.computeCommandList.length = 0;
+        frameState.shadowMaps.length = 0;
+        // frameState.mapProjection = this.mapProjection;
+        frameState.mode = this.mode;
+        // frameState.cameraUnderground = this._cameraUnderground;
+        this.renderCollection.children = [];
+        // frameState.cullingVolume = camera.frustum.computeCullingVolume(camera.positionWC, camera.directionWC, camera.upWC);
+        // frameState.globeTranslucencyState = this._globeTranslucencyState;
+
+        this.clearPasses(frameState.passes);
+    }
+
+    updateAndExecuteCommands(backgroundColor: CesiumColor): void {
+        const frameState = this.frameState;
+        // const mode = frameState.mode;
+
+        executeCommandsInViewport(true, this, backgroundColor);
     }
 }
