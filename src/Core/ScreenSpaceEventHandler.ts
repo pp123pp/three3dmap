@@ -1,9 +1,9 @@
 import { Vector2 } from 'three';
 import { AssociativeArray } from './AssociativeArray';
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
+import defined from './defined';
 import { destroyObject } from './destroyObject';
-import { DeveloperError } from './DeveloperError';
+import DeveloperError from './DeveloperError';
 import { FeatureDetection } from './FeatureDetection';
 import { getTimestamp } from './getTimestamp';
 import { KeyboardEventModifier } from './KeyboardEventModifier';

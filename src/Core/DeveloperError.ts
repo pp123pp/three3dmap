@@ -1,4 +1,4 @@
-import { defined } from './defined';
+import defined from './defined';
 
 /**
  * Constructs an exception object that is thrown due to a developer error, e.g., invalid argument,
@@ -19,7 +19,7 @@ import { defined } from './defined';
  * @see RuntimeError
  */
 
-class DeveloperError extends Error {
+export default class DeveloperError extends Error {
     /**
      * 'DeveloperError' indicating that this exception was thrown due to a developer error.
      * @type {String}
@@ -66,7 +66,7 @@ class DeveloperError extends Error {
         return str;
     }
 
-    static throwInstantiationError(): void {
+    static throwInstantiationError(): never {
         throw new DeveloperError('This function defines an interface and should not be called directly.');
     }
 }
@@ -75,5 +75,3 @@ class DeveloperError extends Error {
 //     DeveloperError.prototype = Object.create(Error.prototype);
 //     DeveloperError.prototype.constructor = DeveloperError;
 // }
-
-export { DeveloperError };

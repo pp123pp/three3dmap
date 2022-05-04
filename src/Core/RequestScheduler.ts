@@ -1,9 +1,11 @@
 import { URI as Uri } from '../ThirdParty/Uri';
 import { defaultValue } from './defaultValue';
 import defer from './defer';
-import { defined } from './defined';
+import defined from './defined';
 import Emit from './Emit';
 import { Heap } from './Heap';
+import isBlobUri from './isBlobUri';
+import isDataUri from './isDataUri';
 import { Request } from './Request';
 import { RequestState } from './RequestState';
 
@@ -166,7 +168,7 @@ export default class RequestScheduler {
      * Sort requests by priority and start requests.
      * @private
      */
-    static update() {
+    static update(): void {
         let i;
         let request;
 
@@ -212,7 +214,7 @@ export default class RequestScheduler {
                 continue;
             }
 
-            if (request.throttleByServer && !RequestScheduler.serverHasOpenSlots(request.serverKey)) {
+            if (request.throttleByServer && !serverHasOpenSlots(request.serverKey)) {
                 // Open slots are available, but the request is throttled by its server. Cancel and try again later.
                 cancelRequest(request);
                 continue;
@@ -223,6 +225,81 @@ export default class RequestScheduler {
         }
 
         updateStatistics();
+    }
+
+    /**
+     * Issue a request. If request.throttle is false, the request is sent immediately. Otherwise the request will be
+     * queued and sorted by priority before being sent.
+     *
+     * @param {Request} request The request object.
+     *
+     * @returns {Promise|undefined} A Promise for the requested data, or undefined if this request does not have high enough priority to be issued.
+     */
+    static request(request: Request): Promise<unknown> | undefined {
+        if (isDataUri(request.url as string) || isBlobUri(request.url as string)) {
+            requestCompletedEvent.raiseEvent();
+            request.state = RequestState.RECEIVED;
+            return (request.requestFunction as any)();
+        }
+
+        ++statistics.numberOfAttemptedRequests;
+
+        if (!defined(request.serverKey)) {
+            request.serverKey = RequestScheduler.getServerKey(request.url as string);
+        }
+
+        if (!RequestScheduler.throttleRequests || !request.throttle) {
+            return startRequest(request);
+        }
+
+        if (activeRequests.length >= RequestScheduler.maximumRequests) {
+            // Active requests are saturated. Try again later.
+            return undefined;
+        }
+
+        if (request.throttleByServer && !serverHasOpenSlots(request.serverKey as string)) {
+            // Server is saturated. Try again later.
+            return undefined;
+        }
+
+        // Insert into the priority heap and see if a request was bumped off. If this request is the lowest
+        // priority it will be returned.
+        updatePriority(request);
+        const removedRequest = requestHeap.insert(request);
+
+        if (defined(removedRequest)) {
+            if (removedRequest === request) {
+                // Request does not have high enough priority to be issued
+                return undefined;
+            }
+            // A previously issued request has been bumped off the priority heap, so cancel it
+            cancelRequest(removedRequest);
+        }
+
+        return issueRequest(request);
+    }
+
+    /**
+     * Get the server key from a given url.
+     *
+     * @param {String} url The url.
+     * @returns {String} The server key.
+     */
+    static getServerKey(url: string): string {
+        const uri = new Uri(url).resolve(pageUri);
+        uri.normalize();
+        let serverKey = uri.authority;
+        if (!/:/.test(serverKey)) {
+            // If the authority does not contain a port number, add port 443 for https or port 80 for http
+            serverKey = serverKey + ':' + (uri.scheme === 'https' ? '443' : '80');
+        }
+
+        const length = numberOfActiveRequestsByServer[serverKey];
+        if (!defined(length)) {
+            numberOfActiveRequestsByServer[serverKey] = 0;
+        }
+
+        return serverKey;
     }
 }
 
@@ -336,4 +413,9 @@ function updateStatistics() {
     }
 
     statistics.lastNumberOfActiveRequests = statistics.numberOfActiveRequests;
+}
+
+function serverHasOpenSlots(serverKey: string) {
+    const maxRequests = defaultValue(RequestScheduler.requestsByServer[serverKey], RequestScheduler.maximumRequestsPerServer);
+    return numberOfActiveRequestsByServer[serverKey] < maxRequests;
 }

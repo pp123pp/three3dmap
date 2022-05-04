@@ -1,4 +1,4 @@
-import { defined } from '@/Core/defined';
+import defined from '@/Core/defined';
 import { Object3DCollection } from '@/Core/Object3DCollection';
 import { FrameState } from '@/Scene/FrameState';
 

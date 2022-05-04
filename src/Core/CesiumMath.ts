@@ -1,6 +1,6 @@
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
-import { DeveloperError } from './DeveloperError';
+import defined from './defined';
+import DeveloperError from './DeveloperError';
 
 /**
  * 0.1

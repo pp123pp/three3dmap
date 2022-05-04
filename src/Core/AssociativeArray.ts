@@ -1,5 +1,5 @@
-import { defined } from './defined';
-import { DeveloperError } from './DeveloperError';
+import defined from './defined';
+import DeveloperError from './DeveloperError';
 
 /**
  * A collection of key-value pairs that is stored as a hash for easy

@@ -1,5 +1,5 @@
 import Cartesian2 from '@/Core/Cartesian2';
-import { defined } from '@/Core/defined';
+import defined from '@/Core/defined';
 import { DoubleSide, RawShaderMaterial, Texture } from 'three';
 
 const vs = `

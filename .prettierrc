@@ -1,7 +1,7 @@
 {
   "root": true,
   "tabWidth": 4,
-  "printWidth": 1400,
+  "printWidth": 400,
   "singleQuote": true,
   "endOfLine": "auto"
 }

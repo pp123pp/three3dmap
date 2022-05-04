@@ -22,8 +22,8 @@
  */
 
 interface IDefer {
-    resolve: (value: unknown) => any;
-    reject: (value: unknown) => void;
+    resolve: Promise<unknown>;
+    reject: Promise<unknown>;
     promise: Promise<unknown>;
 }
 

@@ -1,5 +1,5 @@
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
+import defined from './defined';
 
 /**
  * Merges two objects, copying their properties onto a new combined object. When two objects have the same

@@ -1,5 +1,5 @@
 import { Check } from './Check';
-import { defined } from './defined';
+import defined from './defined';
 
 function compareNumber(a: number, b: number): number {
     return b - a;

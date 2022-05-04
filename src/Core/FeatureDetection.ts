@@ -1,5 +1,5 @@
 /* eslint-disable no-useless-escape */
-import { defined } from './defined';
+import defined from './defined';
 
 let imageRenderingValueResult: string;
 let supportsImageRenderingPixelatedResult: boolean;

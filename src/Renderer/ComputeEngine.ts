@@ -4,7 +4,7 @@ import Context from './Context';
 import MapRenderer from './MapRenderer';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { ComputedShaderPass } from './ComputedShaderPass';
-import { defined } from '@/Core/defined';
+import defined from '@/Core/defined';
 import GeographicReprojectMaterial from '@/Material/GeographicReprojectMaterial';
 import { ComputeCommand } from './ComputeCommand';
 

@@ -2,8 +2,9 @@ import { Vector3 } from 'three';
 import Cartesian4 from './Cartesian4';
 import { CesiumMath } from './CesiumMath';
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
-import { DeveloperError } from './DeveloperError';
+import defined from './defined';
+import DeveloperError from './DeveloperError';
+import Ellipsoid from './Ellipsoid';
 
 export default class Cartesian3 extends Vector3 {
     constructor(x = 0.0, y = 0.0, z = 0.0) {
@@ -424,26 +425,23 @@ export default class Cartesian3 extends Vector3 {
      * @example
      * var position = Cesium.Cartesian3.fromRadians(-2.007, 0.645);
      */
-    // static fromRadians(longitude: number, latitude: number, height: number, ellipsoid: Ellipsoid, result?: Cartesian3): Cartesian3 {
-    //     height = defaultValue(height, 0.0);
-    //     const radiiSquared = defined(ellipsoid) ? ellipsoid.radiiSquared : wgs84RadiiSquared;
+    static fromRadians(longitude: number, latitude: number, height: number, ellipsoid: Ellipsoid, result = new Cartesian3()): Cartesian3 {
+        height = defaultValue(height, 0.0);
+        const radiiSquared = defined(ellipsoid) ? ellipsoid.radiiSquared : wgs84RadiiSquared;
 
-    //     const cosLatitude = Math.cos(latitude);
-    //     scratchN.x = cosLatitude * Math.cos(longitude);
-    //     scratchN.y = cosLatitude * Math.sin(longitude);
-    //     scratchN.z = Math.sin(latitude);
-    //     scratchN = Cartesian3.normalize(scratchN, scratchN);
+        const cosLatitude = Math.cos(latitude);
+        scratchN.x = cosLatitude * Math.cos(longitude);
+        scratchN.y = cosLatitude * Math.sin(longitude);
+        scratchN.z = Math.sin(latitude);
+        scratchN = Cartesian3.normalize(scratchN, scratchN);
 
-    //     Cartesian3.multiplyComponents(radiiSquared as Cartesian3, scratchN, scratchK);
-    //     const gamma = Math.sqrt(Cartesian3.dot(scratchN, scratchK));
-    //     scratchK = Cartesian3.divideByScalar(scratchK, gamma, scratchK);
-    //     scratchN = Cartesian3.multiplyByScalar(scratchN, height, scratchN);
+        Cartesian3.multiplyComponents(radiiSquared, scratchN, scratchK);
+        const gamma = Math.sqrt(Cartesian3.dot(scratchN, scratchK));
+        scratchK = Cartesian3.divideByScalar(scratchK, gamma, scratchK);
+        scratchN = Cartesian3.multiplyByScalar(scratchN, height, scratchN);
 
-    //     if (!defined(result)) {
-    //         result = new Cartesian3();
-    //     }
-    //     return Cartesian3.add(scratchK, scratchN, result as Cartesian3);
-    // }
+        return Cartesian3.add(scratchK, scratchN, result);
+    }
 
     /**
      * Compares two Cartesians and computes a Cartesian which contains the minimum components of the supplied Cartesians.
@@ -521,8 +519,8 @@ export default class Cartesian3 extends Vector3 {
 const distanceScratch = new Cartesian3();
 const mostOrthogonalAxisScratch = new Cartesian3();
 
-const scratchN = new Cartesian3();
-const scratchK = new Cartesian3();
+let scratchN = new Cartesian3();
+let scratchK = new Cartesian3();
 const wgs84RadiiSquared = new Cartesian3(6378137.0 * 6378137.0, 6378137.0 * 6378137.0, 6356752.3142451793 * 6356752.3142451793);
 
 const lerpScratch = new Cartesian3();

@@ -1,5 +1,5 @@
-import { defined } from './defined';
-import { DeveloperError } from './DeveloperError';
+import defined from './defined';
+import DeveloperError from './DeveloperError';
 
 const Check: any = {};
 

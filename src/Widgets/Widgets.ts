@@ -1,12 +1,13 @@
 import { combine } from '@/Core/combine';
 import { defaultValue } from '@/Core/defaultValue';
-import { defined } from '@/Core/defined';
+import defined from '@/Core/defined';
 import { FeatureDetection } from '@/Core/FeatureDetection';
 import { ScreenSpaceEventHandler } from '@/Core/ScreenSpaceEventHandler';
 import MapScene from '@/Scene/MapScene';
 import PerspectiveFrustumCamera from '@/Scene/PerspectiveFrustumCamera';
 import { Clock, WebGLRendererParameters } from 'three';
 import getElement from './getElement';
+import './../Extension/Object3DExtension';
 
 function startRenderLoop(widget: Widgets) {
     widget._renderLoopRunning = true;

@@ -16,7 +16,7 @@
  */
 
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
+import defined from './defined';
 import { RequestState } from './RequestState';
 import { RequestType } from './RequestType';
 

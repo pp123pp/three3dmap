@@ -1,5 +1,5 @@
 import { defaultValue } from './defaultValue';
-import { DeveloperError } from './DeveloperError';
+import DeveloperError from './DeveloperError';
 
 function returnTrue(): boolean {
     return true;

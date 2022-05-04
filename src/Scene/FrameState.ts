@@ -1,7 +1,10 @@
+import Cartesian2 from '@/Core/Cartesian2';
+import CullingVolume from '@/Core/CullingVolume';
 import { SceneMode } from '@/Core/SceneMode';
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
 import Context from '@/Renderer/Context';
-import { PerspectiveCamera } from 'three';
+import { Frustum, PerspectiveCamera } from 'three';
+import MapCamera from './MapCamera';
 import MapScene from './MapScene';
 
 export interface PassesInterface {
@@ -102,6 +105,7 @@ class FrameState {
         minimumBrightness: undefined,
     };
 
+    cullingVolume = new CullingVolume();
     // globeTranslucencyState?: GlobeTranslucencyState;
 
     constructor(scene: MapScene) {
@@ -178,8 +182,6 @@ class FrameState {
         this.shadowMaps = [];
         // this.camera = scene.camera;
 
-        // this.cullingVolume = new CullingVolume();
-
         this.maximumScreenSpaceError = 2.0;
 
         this.mapProjection = undefined;
@@ -236,8 +238,11 @@ class FrameState {
         // this.globeTranslucencyState = undefined;
     }
 
-    get camera(): PerspectiveCamera {
-        return this.scene.camera;
+    get camera(): MapCamera {
+        return this.scene.mapCamera;
+    }
+    get bufferSize(): Cartesian2 {
+        return this.scene.drawingBufferSize;
     }
 }
 

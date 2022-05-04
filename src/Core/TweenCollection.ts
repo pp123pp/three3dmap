@@ -1,8 +1,8 @@
 import * as TweenJS from '@tweenjs/tween.js';
 import { clone } from './clone';
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
-import { DeveloperError } from './DeveloperError';
+import defined from './defined';
+import DeveloperError from './DeveloperError';
 import { EasingFunction } from './EasingFunction';
 import { getTimestamp } from './getTimestamp';
 import { TimeConstants } from './TimeConstants';
@@ -169,7 +169,7 @@ class TweenCollection {
                 options.update(value);
             });
         }
-        tweenjs.onComplete(defaultValue(options.complete, null));
+        tweenjs.onComplete(defaultValue(options.complete, null) as any);
         tweenjs.repeat(defaultValue(options._repeat, 0.0) as number);
 
         const tween = new Tween(this, tweenjs, options.startObject, options.stopObject, options.duration, delayInSeconds, easingFunction, options.update, options.complete, options.cancel);

@@ -1,5 +1,5 @@
 import { defaultValue } from './defaultValue';
-import { defined } from './defined';
+import defined from './defined';
 
 // #rgb
 const rgbMatcher = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i;
@@ -71,6 +71,15 @@ class CesiumColor {
     static WHITE = Object.freeze(CesiumColor.fromCssColorString('#FFFFFF')) as CesiumColor;
 
     static RED = CesiumColor.fromCssColorString('#FF0000');
+
+    /**
+     * An immutable Color instance initialized to CSS color #FFFF00
+     * <span class="colorSwath" style="background: #FFFF00;"></span>
+     *
+     * @constant
+     * @type {Color}
+     */
+    static YELLOW = Object.freeze(CesiumColor.fromCssColorString('#FFFF00'));
 
     /**
      * An immutable Color instance initialized to CSS color #000000

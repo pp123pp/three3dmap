@@ -1,6 +1,6 @@
 import { Vector4 } from 'three';
 import { CesiumColor } from './CesiumColor';
-import { defined } from './defined';
+import defined from './defined';
 
 export default class Cartesian4 extends Vector4 {
     constructor(x = 0.0, y = 0.0, z = 0.0, w = 0.0) {
