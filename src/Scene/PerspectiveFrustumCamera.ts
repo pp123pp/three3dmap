@@ -11,7 +11,7 @@ const worldDirectionWC = new Cartesian3();
 
 const directionWC = new Cartesian3();
 
-const updateMembers = function (frustum: PerspectiveFrustumCamera) {
+const update = function (frustum: PerspectiveFrustumCamera) {
     if (frustum.fovRadius !== frustum._fovRadius || frustum.aspect !== frustum._aspect || frustum.near !== frustum._near || frustum.far !== frustum._far) {
         frustum._aspect = frustum.aspect;
         frustum._fovRadius = frustum.fovRadius;
@@ -29,11 +29,11 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
     containerHeight = 0;
     _sseDenominator = 0.0;
     scene?: MapScene;
-    _fovRadius: number;
-    _near: number;
-    _far: number;
-    _fovy = 0;
-    _aspect: number;
+    _fovRadius?: number;
+    _near?: number;
+    _far?: number;
+    _fovy?: number = 0;
+    _aspect?: number;
 
     _projScreenMatrix = new CesiumMatrix4();
 
@@ -42,10 +42,10 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
     _frustum = new CullingVolume();
     constructor(options: IMapCamera) {
         super(options.fov, options.aspect, options.near, options.far);
-        this._fovRadius = this.fovRadius;
-        this._near = this.near;
-        this._far = this.far;
-        this._aspect = this.aspect;
+        // this._fovRadius = this.fovRadius;
+        // this._near = this.near;
+        // this._far = this.far;
+        // this._aspect = this.aspect;
 
         this.up.set(0, 0, 1);
     }
@@ -91,12 +91,12 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
     }
 
     get fovy(): number {
-        updateMembers(this);
+        update(this);
         return this._fovy as number;
     }
 
     get sseDenominator(): number {
-        updateMembers(this);
+        update(this);
         return this._sseDenominator;
         // this.updateProjectionMatrix();
         // return 2.0 * Math.tan(0.5 * this.fov * THREE.MathUtils.DEG2RAD) / this._scene.drawingBufferSize.height;
@@ -104,5 +104,13 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
 
     get fovRadius(): number {
         return MathUtils.degToRad(this.fov);
+    }
+
+    get aspectRatio(): number {
+        return this.aspect;
+    }
+
+    set aspectRatio(value: number) {
+        this.aspect = value;
     }
 }

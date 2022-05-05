@@ -5,6 +5,6 @@ function defaultValue<U>(a: any, b: U): U {
     return b;
 }
 
-defaultValue.EMPTY_OBJECT = Object.freeze({});
+defaultValue.EMPTY_OBJECT = Object.freeze({}) as any;
 
 export { defaultValue };

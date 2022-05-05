@@ -17,17 +17,17 @@ interface IQuadtreeTileParameter {
 
 export default class QuadtreeTile {
     _tilingScheme: GeographicTilingScheme;
-    readonly x: number;
-    readonly y: number;
-    readonly level: number;
-    readonly parent?: QuadtreeTile;
-    readonly rectangle: Rectangle;
+    _x: number;
+    _y: number;
+    _level: number;
+    _parent?: QuadtreeTile;
+    _rectangle: Rectangle;
 
     // The distance from the camera to this tile, updated when the tile is selected
     // for rendering.  We can get rid of this if we have a better way to sort by
     // distance - for example, by using the natural ordering of a quadtree.
     // QuadtreePrimitive gets/sets this private property.
-    readonly _distance = 0.0;
+    _distance = 0.0;
     _loadPriority = 0.0;
 
     _southwestChild?: QuadtreeTile;
@@ -80,15 +80,61 @@ export default class QuadtreeTile {
 
     constructor(options: IQuadtreeTileParameter) {
         this._tilingScheme = options.tilingScheme;
-        this.x = options.x;
-        this.y = options.y;
-        this.level = options.level;
-        this.parent = options.parent;
-        this.rectangle = this._tilingScheme.tileXYToRectangle(this.x, this.y, this.level);
+        this._x = options.x;
+        this._y = options.y;
+        this._level = options.level;
+        this._parent = options.parent;
+        this._rectangle = this._tilingScheme.tileXYToRectangle(this.x, this.y, this.level);
     }
 
     get customData(): any[] {
         return this._customData;
+    }
+
+    /**
+     * Gets the tile X coordinate.
+     * @memberof QuadtreeTile.prototype
+     * @type {Number}
+     */
+    get x(): number {
+        return this._x;
+    }
+
+    /**
+     * Gets the tile Y coordinate.
+     * @memberof QuadtreeTile.prototype
+     * @type {Number}
+     */
+    get y(): number {
+        return this._y;
+    }
+
+    /**
+     * Gets the level-of-detail, where zero is the coarsest, least-detailed.
+     * @memberof QuadtreeTile.prototype
+     * @type {Number}
+     */
+    get level(): number {
+        return this._level;
+    }
+
+    /**
+     * Gets the parent tile of this tile.
+     * @memberof QuadtreeTile.prototype
+     * @type {QuadtreeTile}
+     */
+    get parent(): QuadtreeTile {
+        return this._parent as QuadtreeTile;
+    }
+
+    /**
+     * Gets the cartographic rectangle of the tile, with north, south, east and
+     * west properties in radians.
+     * @memberof QuadtreeTile.prototype
+     * @type {Rectangle}
+     */
+    get rectangle(): Rectangle {
+        return this._rectangle;
     }
 
     /**
@@ -263,5 +309,106 @@ export default class QuadtreeTile {
                 this._frameUpdated = (parent as QuadtreeTile)._frameUpdated;
             }
         }
+    }
+
+    findLevelZeroTile(levelZeroTiles: QuadtreeTile[], x: number, y: number): QuadtreeTile | undefined {
+        const xTiles = this.tilingScheme.getNumberOfXTilesAtLevel(0);
+        if (x < 0) {
+            x += xTiles;
+        } else if (x >= xTiles) {
+            x -= xTiles;
+        }
+
+        if (y < 0 || y >= this.tilingScheme.getNumberOfYTilesAtLevel(0)) {
+            return undefined;
+        }
+
+        return levelZeroTiles.filter(function (tile) {
+            return tile.x === x && tile.y === y;
+        })[0];
+    }
+
+    findTileToWest(levelZeroTiles: QuadtreeTile[]): QuadtreeTile | undefined {
+        const parent = this.parent;
+        if (parent === undefined) {
+            return this.findLevelZeroTile(levelZeroTiles, this.x - 1, this.y) as QuadtreeTile;
+        }
+
+        if (parent.southeastChild === this) {
+            return parent.southwestChild;
+        } else if (parent.northeastChild === this) {
+            return parent.northwestChild;
+        }
+
+        const westOfParent = parent.findTileToWest(levelZeroTiles);
+        if (westOfParent === undefined) {
+            return undefined;
+        } else if (parent.southwestChild === this) {
+            return westOfParent.southeastChild;
+        }
+        return westOfParent.northeastChild;
+    }
+
+    findTileToEast(levelZeroTiles: QuadtreeTile[]): QuadtreeTile | undefined {
+        const parent = this.parent;
+        if (parent === undefined) {
+            return this.findLevelZeroTile(levelZeroTiles, this.x + 1, this.y);
+        }
+
+        if (parent.southwestChild === this) {
+            return parent.southeastChild;
+        } else if (parent.northwestChild === this) {
+            return parent.northeastChild;
+        }
+
+        const eastOfParent = parent.findTileToEast(levelZeroTiles);
+        if (eastOfParent === undefined) {
+            return undefined;
+        } else if (parent.southeastChild === this) {
+            return eastOfParent.southwestChild;
+        }
+        return eastOfParent.northwestChild;
+    }
+
+    findTileToSouth(levelZeroTiles: QuadtreeTile[]): QuadtreeTile | undefined {
+        const parent = this.parent;
+        if (parent === undefined) {
+            return this.findLevelZeroTile(levelZeroTiles, this.x, this.y + 1);
+        }
+
+        if (parent.northwestChild === this) {
+            return parent.southwestChild;
+        } else if (parent.northeastChild === this) {
+            return parent.southeastChild;
+        }
+
+        const southOfParent = parent.findTileToSouth(levelZeroTiles);
+        if (southOfParent === undefined) {
+            return undefined;
+        } else if (parent.southwestChild === this) {
+            return southOfParent.northwestChild;
+        }
+        return southOfParent.northeastChild;
+    }
+
+    findTileToNorth(levelZeroTiles: QuadtreeTile[]): QuadtreeTile | undefined {
+        const parent = this.parent;
+        if (parent === undefined) {
+            return this.findLevelZeroTile(levelZeroTiles, this.x, this.y - 1);
+        }
+
+        if (parent.southwestChild === this) {
+            return parent.northwestChild;
+        } else if (parent.southeastChild === this) {
+            return parent.northeastChild;
+        }
+
+        const northOfParent = parent.findTileToNorth(levelZeroTiles);
+        if (northOfParent === undefined) {
+            return undefined;
+        } else if (parent.northwestChild === this) {
+            return northOfParent.southwestChild;
+        }
+        return northOfParent.southeastChild;
     }
 }

@@ -46,6 +46,8 @@ const TileSelectionResult = {
      */
     CULLED_BUT_NEEDED: 1 | 8,
 
+    KICKED: undefined,
+
     /**
      * Determines if a selection result indicates that this tile or its descendants were
      * kicked from the render list. In other words, if it is <code>RENDERED_AND_KICKED</code>

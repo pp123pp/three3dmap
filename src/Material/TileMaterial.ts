@@ -83,7 +83,7 @@ void main(){
     #endif
 
 #else
-    
+
     vec3 position = position3DAndHeight.xyz;
     float height = position3DAndHeight.w;
     vec2 textureCoordinates = textureCoordAndEncodedNormals.xy;
@@ -110,9 +110,9 @@ void main(){
     gl_Position = getPosition(transformed, height, textureCoordinates);
 
     // gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
-    
+
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
-    
+
     #include <logdepthbuf_vertex>
 }
 
@@ -150,8 +150,8 @@ vec4 sampleAndBlend(
     float textureOneOverGamma,
     float split)
 {
-    
-    
+
+
     vec2 alphaMultiplier = step(textureCoordinateRectangle.st, tileTextureCoordinates);
     textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
 
@@ -167,11 +167,11 @@ vec4 sampleAndBlend(
 
 #ifdef APPLY_SPLIT
     float splitPosition = czm_imagerySplitPosition;
-    
+
     if (split < 0.0 && gl_FragCoord.x > splitPosition) {
        alpha = 0.0;
     }
-    
+
     else if (split > 0.0 && gl_FragCoord.x < splitPosition) {
        alpha = 0.0;
     }
@@ -208,15 +208,34 @@ vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
 {
     vec4 color = initialColor;
 
-    #pragma unroll_loop_start
-    for ( int i = 0; i < TEXTURE_UNITS; i ++ ) {
+    // #pragma unroll_loop_start
+    // for ( int i = 0; i < TEXTURE_UNITS; i ++ ) {
+
+    //     color = sampleAndBlend(
+    //         color,
+    //         u_dayTextures[ i ],
+    //         u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
+    //         u_dayTextureTexCoordsRectangle[ i ],
+    //         u_dayTextureTranslationAndScale[ i ],
+    //         1.0,
+    //         0.0,
+    //         0.0,
+    //         0.0,
+    //         0.0,
+    //         0.0,
+    //         0.0
+    //     );
+
+    // }
+    // #pragma unroll_loop_end
+
 
         color = sampleAndBlend(
             color,
-            u_dayTextures[ i ],
-            u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
-            u_dayTextureTexCoordsRectangle[ i ],
-            u_dayTextureTranslationAndScale[ i ],
+            u_dayTextures[ 0 ],
+            u_dayTextureUseWebMercatorT[ 0 ] ? textureCoordinates.xz : textureCoordinates.xy,
+            u_dayTextureTexCoordsRectangle[ 0 ],
+            u_dayTextureTranslationAndScale[ 0 ],
             1.0,
             0.0,
             0.0,
@@ -225,9 +244,6 @@ vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
             0.0,
             0.0
         );
-
-    }
-    #pragma unroll_loop_end
 
     return color;
 }
@@ -265,7 +281,7 @@ class TileMaterial extends ShaderMaterial {
         };
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
-        this.defines.TEXTURE_UNITS = shaderSetOptions.numberOfDayTextures;
+        this.defines.TEXTURE_UNITS = 1;
         // this.wireframe = true;
         // this.depthWrite = false;
     }

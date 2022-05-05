@@ -539,4 +539,64 @@ export default class CesiumMatrix4 extends Matrix4 {
         result.elements[15] = matrix.elements[15];
         return result;
     }
+
+    /**
+     * Compares the provided matrices componentwise and returns
+     * <code>true</code> if they are equal, <code>false</code> otherwise.
+     *
+     * @param {Matrix4} [left] The first matrix.
+     * @param {Matrix4} [right] The second matrix.
+     * @returns {Boolean} <code>true</code> if left and right are equal, <code>false</code> otherwise.
+     *
+     * @example
+     * //compares two Matrix4 instances
+     *
+     * // a = [10.0, 14.0, 18.0, 22.0]
+     * //     [11.0, 15.0, 19.0, 23.0]
+     * //     [12.0, 16.0, 20.0, 24.0]
+     * //     [13.0, 17.0, 21.0, 25.0]
+     *
+     * // b = [10.0, 14.0, 18.0, 22.0]
+     * //     [11.0, 15.0, 19.0, 23.0]
+     * //     [12.0, 16.0, 20.0, 24.0]
+     * //     [13.0, 17.0, 21.0, 25.0]
+     *
+     * if(Cesium.Matrix4.equals(a,b)) {
+     *      console.log("Both matrices are equal");
+     * } else {
+     *      console.log("They are not equal");
+     * }
+     *
+     * //Prints "Both matrices are equal" on the console
+     */
+    static equals(left: CesiumMatrix4, right: CesiumMatrix4): boolean {
+        // Given that most matrices will be transformation matrices, the elements
+        // are tested in order such that the test is likely to fail as early
+        // as possible.  I _think_ this is just as friendly to the L1 cache
+        // as testing in index order.  It is certainty faster in practice.
+        return (
+            left === right ||
+            (defined(left) &&
+                defined(right) &&
+                // Translation
+                left.elements[12] === right.elements[12] &&
+                left.elements[13] === right.elements[13] &&
+                left.elements[14] === right.elements[14] &&
+                // Rotation/scale
+                left.elements[0] === right.elements[0] &&
+                left.elements[1] === right.elements[1] &&
+                left.elements[2] === right.elements[2] &&
+                left.elements[4] === right.elements[4] &&
+                left.elements[5] === right.elements[5] &&
+                left.elements[6] === right.elements[6] &&
+                left.elements[8] === right.elements[8] &&
+                left.elements[9] === right.elements[9] &&
+                left.elements[10] === right.elements[10] &&
+                // Bottom row
+                left.elements[3] === right.elements[3] &&
+                left.elements[7] === right.elements[7] &&
+                left.elements[11] === right.elements[11] &&
+                left.elements[15] === right.elements[15])
+        );
+    }
 }

@@ -1,3 +1,4 @@
+import Cartesian3 from '@/Core/Cartesian3';
 import { CesiumColor } from '@/Core/CesiumColor';
 import { incrementWrap } from '@/Core/CesiumMath';
 import { defaultValue } from '@/Core/defaultValue';
@@ -171,12 +172,12 @@ function executeCommandsInViewport(firstViewport: boolean, scene: MapScene, back
     // executeCommands(scene, passState);
     // scene.renderer.clear();
     // scene.renderer.render(scene, scene.activeCamera);
-    scene.renderer.autoClear = false;
-    scene.renderer.clear();
+    // scene.renderer.autoClear = false;
+    // scene.renderer.clear();
     // scene.skyBox.render();
     // scene.effectComposerCollection.render();
 
-    scene.renderer.render(scene, scene.camera);
+    scene.renderer.render(scene, scene.camera.frustum);
 }
 
 export default class MapScene extends Scene {
@@ -213,7 +214,7 @@ export default class MapScene extends Scene {
     readonly screenSpaceCameraController: OrbitControls;
     mapProjection = new GeographicProjection();
 
-    _globe: Globe;
+    _globe?: Globe;
 
     _removeGlobeCallbacks: any[] = [];
 
@@ -222,15 +223,26 @@ export default class MapScene extends Scene {
 
         this.renderer = new MapRenderer(options.renderState);
 
-        this.mapCamera = new MapCamera(this, {
-            aspect: this.drawingBufferSize.width / this.drawingBufferSize.height,
-            near: 0.1,
-            far: 10000000000,
-        });
-
         this.context = new Context(this);
 
         this.canvas = this.renderer.domElement;
+
+        this.mapCamera = new MapCamera(this, {
+            aspect: this.canvas.clientWidth / this.canvas.clientHeight,
+            near: 0.1,
+            far: 10000000000,
+            // far: 1000,
+        });
+
+        // this.mapCamera.position.set(63916973.15163071, 63916973.933613418, 9994134.16404095);
+        // camera.position.set(10, 10, 10);
+        // camera.lookAt(63916973.15163071, 63916973.933613418, 0);
+        // camera.rotation.set(0, 0, 0);
+
+        // const ps = new Cartesian3(63916973.15163071, 3088494.933613418, 9994134.16404095);
+        // this.mapCamera.setView({
+        //     destination: ps,
+        // });
 
         this.computeEngine = new ComputeEngine(this, this.context);
 
@@ -242,7 +254,7 @@ export default class MapScene extends Scene {
 
         this.effectComposerCollection = new EffectComposerCollection(this);
 
-        this.screenSpaceCameraController = new OrbitControls(this.camera, this.canvas);
+        this.screenSpaceCameraController = new OrbitControls(this.camera.frustum, this.canvas);
 
         const ellipsoid = defaultValue(this.mapProjection.ellipsoid, Ellipsoid.WGS84);
         this._globe = new Globe(ellipsoid);
@@ -250,8 +262,8 @@ export default class MapScene extends Scene {
         this.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
     }
 
-    get camera(): PerspectiveFrustumCamera {
-        return this.mapCamera.frustum;
+    get camera(): MapCamera {
+        return this.mapCamera;
     }
 
     get drawingBufferSize(): Vector2 {

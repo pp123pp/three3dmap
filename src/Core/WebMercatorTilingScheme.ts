@@ -38,7 +38,7 @@ export default class WebMercatorTilingScheme {
     _rectangleSouthwestInMeters: Cartesian2;
     _rectangleNortheastInMeters: Cartesian2;
     _rectangle: Rectangle;
-    constructor(options?: { ellipsoid?: Ellipsoid; numberOfLevelZeroTilesX?: number; numberOfLevelZeroTilesY?: number; rectangleSouthwestInMeters?: Cartesian2; rectangleNortheastInMeters?: Cartesian2 }) {
+    constructor(options: { ellipsoid?: Ellipsoid; numberOfLevelZeroTilesX?: number; numberOfLevelZeroTilesY?: number; rectangleSouthwestInMeters?: Cartesian2; rectangleNortheastInMeters?: Cartesian2 }) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         this._ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84);

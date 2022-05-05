@@ -64,7 +64,7 @@ class HeightmapTerrainData {
      *          asynchronous mesh creations are already in progress and the operation should
      *          be retried later.
      */
-    createMesh(tilingScheme: any, x: any, y: any, level: any, exaggeration: any): any {
+    createMesh(options: any): any {
         // options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         // const tilingScheme = options.tilingScheme;
@@ -75,11 +75,17 @@ class HeightmapTerrainData {
         // const exaggerationRelativeHeight = defaultValue(options.exaggerationRelativeHeight, 0.0);
         // const throttle = defaultValue(options.throttle, true);
 
+        const tilingScheme = options.tilingScheme;
+        const x = options.x;
+        const y = options.y;
+        const level = options.level;
+        const exaggeration = defaultValue(options.exaggeration, 1.0);
+        const exaggerationRelativeHeight = defaultValue(options.exaggerationRelativeHeight, 0.0);
+        const throttle = defaultValue(options.throttle, true);
+
         const ellipsoid = tilingScheme.ellipsoid;
-        // //计算矩形区域
         const nativeRectangle = tilingScheme.tileXYToNativeRectangle(x, y, level);
         const rectangle = tilingScheme.tileXYToRectangle(x, y, level);
-        exaggeration = defaultValue(exaggeration, 1.0);
 
         // Compute the center of the tile for RTC rendering.
         //计算矩形区域的中心点坐标

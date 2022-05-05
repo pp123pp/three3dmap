@@ -1,5 +1,6 @@
 import { Matrix3 } from 'three';
 import Cartesian3 from './Cartesian3';
+import CesiumQuaternion from './CesiumQuaternion';
 import { defaultValue } from './defaultValue';
 import defined from './defined';
 
@@ -188,6 +189,49 @@ export default class CesiumMatrix3 extends Matrix3 {
         result.elements[6] = array[startingIndex++];
         result.elements[7] = array[startingIndex++];
         result.elements[8] = array[startingIndex++];
+        return result;
+    }
+
+    /**
+     * Computes a 3x3 rotation matrix from the provided quaternion.
+     *
+     * @param {Quaternion} quaternion the quaternion to use.
+     * @param {Matrix3} [result] The object in which the result will be stored, if undefined a new instance will be created.
+     * @returns {Matrix3} The 3x3 rotation matrix from this quaternion.
+     */
+    static fromQuaternion(quaternion: CesiumQuaternion, result = new CesiumMatrix3()): CesiumMatrix3 {
+        const x2 = quaternion.x * quaternion.x;
+        const xy = quaternion.x * quaternion.y;
+        const xz = quaternion.x * quaternion.z;
+        const xw = quaternion.x * quaternion.w;
+        const y2 = quaternion.y * quaternion.y;
+        const yz = quaternion.y * quaternion.z;
+        const yw = quaternion.y * quaternion.w;
+        const z2 = quaternion.z * quaternion.z;
+        const zw = quaternion.z * quaternion.w;
+        const w2 = quaternion.w * quaternion.w;
+
+        const m00 = x2 - y2 - z2 + w2;
+        const m01 = 2.0 * (xy - zw);
+        const m02 = 2.0 * (xz + yw);
+
+        const m10 = 2.0 * (xy + zw);
+        const m11 = -x2 + y2 - z2 + w2;
+        const m12 = 2.0 * (yz - xw);
+
+        const m20 = 2.0 * (xz - yw);
+        const m21 = 2.0 * (yz + xw);
+        const m22 = -x2 - y2 + z2 + w2;
+
+        result.elements[0] = m00;
+        result.elements[1] = m10;
+        result.elements[2] = m20;
+        result.elements[3] = m01;
+        result.elements[4] = m11;
+        result.elements[5] = m21;
+        result.elements[6] = m02;
+        result.elements[7] = m12;
+        result.elements[8] = m22;
         return result;
     }
 }

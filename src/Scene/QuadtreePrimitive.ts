@@ -18,6 +18,54 @@ import QuadtreeTileProvider from './QuadtreeTileProvider';
 import { TileReplacementQueue } from './TileReplacementQueue';
 import TileSelectionResult from './TileSelectionResult';
 
+/**
+ * Tracks details of traversing a tile while selecting tiles for rendering.
+ * @alias TraversalDetails
+ * @constructor
+ * @private
+ */
+class TraversalDetails {
+    /**
+     * True if all selected (i.e. not culled or refined) tiles in this tile's subtree
+     * are renderable. If the subtree is renderable, we'll render it; no drama.
+     */
+    allAreRenderable = true;
+
+    /**
+     * True if any tiles in this tile's subtree were rendered last frame. If any
+     * were, we must render the subtree rather than this tile, because rendering
+     * this tile would cause detail to vanish that was visible last frame, and
+     * that's no good.
+     */
+    anyWereRenderedLastFrame = false;
+
+    /**
+     * Counts the number of selected tiles in this tile's subtree that are
+     * not yet ready to be rendered because they need more loading. Note that
+     * this value will _not_ necessarily be zero when
+     * {@link TraversalDetails#allAreRenderable} is true, for subtle reasons.
+     * When {@link TraversalDetails#allAreRenderable} and
+     * {@link TraversalDetails#anyWereRenderedLastFrame} are both false, we
+     * will render this tile instead of any tiles in its subtree and
+     * the `allAreRenderable` value for this tile will reflect only whether _this_
+     * tile is renderable. The `notYetRenderableCount` value, however, will still
+     * reflect the total number of tiles that we are waiting on, including the
+     * ones that we're not rendering. `notYetRenderableCount` is only reset
+     * when a subtree is removed from the render queue because the
+     * `notYetRenderableCount` exceeds the
+     * {@link QuadtreePrimitive#loadingDescendantLimit}.
+     */
+    notYetRenderableCount = 0;
+
+    constructor() {
+        this.allAreRenderable = true;
+
+        this.anyWereRenderedLastFrame = false;
+
+        this.notYetRenderableCount = 0;
+    }
+}
+
 class TraversalQuadDetails {
     southwest = new TraversalDetails();
     southeast = new TraversalDetails();
@@ -106,17 +154,28 @@ function processTileLoadQueue(primitive: QuadtreePrimitive, frameState: FrameSta
     const endTime = getTimestamp() + primitive._loadQueueTimeSlice;
     const tileProvider = primitive._tileProvider;
 
-    processSinglePriorityLoadQueue(primitive, frameState, tileProvider, endTime, tileLoadQueueHigh);
-    processSinglePriorityLoadQueue(primitive, frameState, tileProvider, endTime, tileLoadQueueMedium);
-    processSinglePriorityLoadQueue(primitive, frameState, tileProvider, endTime, tileLoadQueueLow);
+    let didSomeLoading = processSinglePriorityLoadQueue(primitive, frameState, tileProvider, endTime, tileLoadQueueHigh, false);
+    didSomeLoading = processSinglePriorityLoadQueue(primitive, frameState, tileProvider, endTime, tileLoadQueueMedium, didSomeLoading);
+    processSinglePriorityLoadQueue(primitive, frameState, tileProvider, endTime, tileLoadQueueLow, didSomeLoading);
 }
 
-function processSinglePriorityLoadQueue(primitive: QuadtreePrimitive, frameState: FrameState, tileProvider: any, endTime: number, loadQueue: any) {
-    for (let i = 0, len = loadQueue.length; i < len && getTimestamp() < endTime; ++i) {
+function sortByLoadPriority(a: QuadtreeTile, b: QuadtreeTile) {
+    return a._loadPriority - b._loadPriority;
+}
+
+function processSinglePriorityLoadQueue(primitive: QuadtreePrimitive, frameState: FrameState, tileProvider: GlobeSurfaceTileProvider, endTime: number, loadQueue: any, didSomeLoading: boolean): boolean {
+    if (tileProvider.computeTileLoadPriority !== undefined) {
+        loadQueue.sort(sortByLoadPriority);
+    }
+
+    for (let i = 0, len = loadQueue.length; i < len && (getTimestamp() < endTime || !didSomeLoading); ++i) {
         const tile = loadQueue[i];
         primitive._tileReplacementQueue.markTileRendered(tile);
         tileProvider.loadTile(frameState, tile);
+        didSomeLoading = true;
     }
+
+    return didSomeLoading;
 }
 
 const scratchRay = new CesiumRay();
@@ -236,16 +295,10 @@ const updateHeights = (primitive: QuadtreePrimitive, frameState: FrameState) => 
 function createRenderCommandsForSelectedTiles(primitive: QuadtreePrimitive, frameState: FrameState) {
     const tileProvider = primitive._tileProvider;
     const tilesToRender = primitive._tilesToRender;
-    const tilesToUpdateHeights = primitive._tileToUpdateHeights;
 
     for (let i = 0, len = tilesToRender.length; i < len; ++i) {
         const tile = tilesToRender[i];
         tileProvider.showTileThisFrame(tile, frameState);
-
-        if (tile._frameRendered !== frameState.frameNumber - 1) {
-            tilesToUpdateHeights.push(tile);
-        }
-        tile._frameRendered = frameState.frameNumber;
     }
 }
 
@@ -560,7 +613,9 @@ function selectTilesForRendering(primitive: QuadtreePrimitive, frameState: Frame
     const camera = frameState.camera;
 
     primitive._cameraPositionCartographic = camera.positionCartographic;
-    const cameraFrameOrigin = CesiumMatrix4.getTranslation(camera.transform, cameraOriginScratch);
+    // const cameraFrameOrigin = CesiumMatrix4.getTranslation(camera.transform, cameraOriginScratch);
+
+    const cameraFrameOrigin = new Cartesian3(0, 0, 0);
     primitive._cameraReferenceFrameOriginCartographic = primitive.tileProvider.tilingScheme.ellipsoid.cartesianToCartographic(cameraFrameOrigin, primitive._cameraReferenceFrameOriginCartographic);
 
     // Traverse in depth-first, near-to-far order.
@@ -797,6 +852,7 @@ export default class QuadtreePrimitive {
      * @default false
      */
     preloadSiblings = false;
+
     constructor(options: IQuadtreePrimitiveParameter) {
         this._tileProvider = options.tileProvider;
         this._tileProvider.quadtree = this;
@@ -830,6 +886,10 @@ export default class QuadtreePrimitive {
 
     get tileProvider(): GlobeSurfaceTileProvider {
         return this._tileProvider;
+    }
+
+    get occluders(): QuadtreeOccluders {
+        return this._occluders;
     }
 
     render(frameState: FrameState): void {
@@ -933,52 +993,4 @@ function queueTileLoad(primitive: QuadtreePrimitive, queue: QuadtreeTile[], tile
         tile._loadPriority = primitive.tileProvider.computeTileLoadPriority(tile, frameState);
     }
     queue.push(tile);
-}
-
-/**
- * Tracks details of traversing a tile while selecting tiles for rendering.
- * @alias TraversalDetails
- * @constructor
- * @private
- */
-class TraversalDetails {
-    /**
-     * True if all selected (i.e. not culled or refined) tiles in this tile's subtree
-     * are renderable. If the subtree is renderable, we'll render it; no drama.
-     */
-    allAreRenderable = true;
-
-    /**
-     * True if any tiles in this tile's subtree were rendered last frame. If any
-     * were, we must render the subtree rather than this tile, because rendering
-     * this tile would cause detail to vanish that was visible last frame, and
-     * that's no good.
-     */
-    anyWereRenderedLastFrame = false;
-
-    /**
-     * Counts the number of selected tiles in this tile's subtree that are
-     * not yet ready to be rendered because they need more loading. Note that
-     * this value will _not_ necessarily be zero when
-     * {@link TraversalDetails#allAreRenderable} is true, for subtle reasons.
-     * When {@link TraversalDetails#allAreRenderable} and
-     * {@link TraversalDetails#anyWereRenderedLastFrame} are both false, we
-     * will render this tile instead of any tiles in its subtree and
-     * the `allAreRenderable` value for this tile will reflect only whether _this_
-     * tile is renderable. The `notYetRenderableCount` value, however, will still
-     * reflect the total number of tiles that we are waiting on, including the
-     * ones that we're not rendering. `notYetRenderableCount` is only reset
-     * when a subtree is removed from the render queue because the
-     * `notYetRenderableCount` exceeds the
-     * {@link QuadtreePrimitive#loadingDescendantLimit}.
-     */
-    notYetRenderableCount = 0;
-
-    constructor() {
-        this.allAreRenderable = true;
-
-        this.anyWereRenderedLastFrame = false;
-
-        this.notYetRenderableCount = 0;
-    }
 }

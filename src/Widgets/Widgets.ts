@@ -8,6 +8,7 @@ import PerspectiveFrustumCamera from '@/Scene/PerspectiveFrustumCamera';
 import { Clock, WebGLRendererParameters } from 'three';
 import getElement from './getElement';
 import './../Extension/Object3DExtension';
+import MapCamera from '@/Scene/MapCamera';
 
 function startRenderLoop(widget: Widgets) {
     widget._renderLoopRunning = true;
@@ -163,8 +164,8 @@ export default class Widgets {
         return pixelRatio;
     }
 
-    get camera(): PerspectiveFrustumCamera {
-        return this.scene.camera;
+    get camera(): MapCamera {
+        return this.scene.mapCamera;
     }
 
     configureCanvasSize(): void {
