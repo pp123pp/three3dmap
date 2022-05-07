@@ -20,7 +20,7 @@ import { TileBoundingRegion } from '@/Core/TileBoundingRegion';
 import Visibility from '@/Core/Visibility';
 import { TileMaterial } from '@/Material/TileMaterial';
 import DrawMeshCommand from '@/Renderer/DrawMeshCommand';
-import { MeshNormalMaterial, SphereBufferGeometry } from 'three';
+import { DoubleSide, MeshNormalMaterial, SphereBufferGeometry } from 'three';
 import { FrameState } from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
 import { ImageryLayer } from './ImageryLayer';
@@ -109,7 +109,7 @@ const surfaceShaderSetOptionsScratch: any = {
 const createTileUniformMap = (frameState: FrameState, tileProvider: any, surfaceShaderSetOptions: any, quantization: any) => {
     const material = new TileMaterial(
         {
-            // side: DoubleSide,
+            side: DoubleSide,
             // wireframe: true
             // depthTest: false
         },

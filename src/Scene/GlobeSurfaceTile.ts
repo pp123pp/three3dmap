@@ -1,14 +1,18 @@
 import BoundingSphere from '@/Core/BoundingSphere';
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartesian4 from '@/Core/Cartesian4';
-import { defaultValue } from '@/Core/defaultValue';
+import Cartographic from '@/Core/Cartographic';
+import CesiumRay from '@/Core/CesiumRay';
 import defined from '@/Core/defined';
+import Ellipsoid from '@/Core/Ellipsoid';
 import EllipsoidTerrainProvider from '@/Core/EllipsoidTerrainProvider';
+import IntersectionTests from '@/Core/IntersectionTests';
 import OrientedBoundingBox from '@/Core/OrientedBoundingBox';
 import QuadtreeTileLoadState from '@/Core/QuadtreeTileLoadState';
 import { Request } from '@/Core/Request';
 import { RequestState } from '@/Core/RequestState';
 import { RequestType } from '@/Core/RequestType';
+import { SceneMode } from '@/Core/SceneMode';
 import TerrainEncoding from '@/Core/TerrainEncoding';
 import TerrainMesh from '@/Core/TerrainMesh';
 import TerrainQuantization from '@/Core/TerrainQuantization';
@@ -24,7 +28,10 @@ import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
 import TerrainState from './TerrainState';
 import TileImagery from './TileImagery';
-import TileTerrain from './TileTerrain';
+
+const scratchV0 = new Cartesian3();
+const scratchV1 = new Cartesian3();
+const scratchV2 = new Cartesian3();
 
 function disposeArray() {
     // this.array = null;
@@ -218,52 +225,6 @@ function prepareNewTile(tile: any, terrainProvider: any, imageryLayerCollection:
     }
 }
 
-function propagateNewLoadedDataToChildren(tile: any) {
-    const surfaceTile = tile.data;
-
-    // Now that there's new data for this tile:
-    //  - child tiles that were previously upsampled need to be re-upsampled based on the new data.
-    //  - child tiles that were previously deemed unavailable may now be available.
-
-    propagateNewLoadedDataToChildTile(tile, surfaceTile, tile.southwestChild);
-    propagateNewLoadedDataToChildTile(tile, surfaceTile, tile.southeastChild);
-    propagateNewLoadedDataToChildTile(tile, surfaceTile, tile.northwestChild);
-    propagateNewLoadedDataToChildTile(tile, surfaceTile, tile.northeastChild);
-}
-
-function propagateNewLoadedDataToChildTile(tile: any, surfaceTile: any, childTile: any) {
-    if (childTile.state !== QuadtreeTileLoadState.START) {
-        const childSurfaceTile = childTile.data;
-        if (defined(childSurfaceTile.terrainData) && !childSurfaceTile.terrainData.wasCreatedByUpsampling()) {
-            // Data for the child tile has already been loaded.
-            return;
-        }
-
-        // Restart the upsampling process, no matter its current state.
-        // We create a new instance rather than just restarting the existing one
-        // because there could be an asynchronous operation pending on the existing one.
-        if (defined(childSurfaceTile.upsampledTerrain)) {
-            childSurfaceTile.upsampledTerrain.freeResources();
-        }
-        childSurfaceTile.upsampledTerrain = new TileTerrain({
-            data: surfaceTile.terrainData,
-            x: tile.x,
-            y: tile.y,
-            level: tile.level,
-        });
-
-        if (surfaceTile.terrainData.isChildAvailable(tile.x, tile.y, childTile.x, childTile.y)) {
-            // Data is available for the child now.  It might have been before, too.
-            if (!defined(childSurfaceTile.loadedTerrain)) {
-                // No load process is in progress, so start one.
-                childSurfaceTile.loadedTerrain = new TileTerrain();
-            }
-        }
-
-        childTile.state = QuadtreeTileLoadState.LOADING;
-    }
-}
-
 function processTerrainStateMachine(tile: any, frameState: any, terrainProvider: any, imageryLayerCollection: any, quadtree: any, vertexArraysToDestroy: any) {
     // const surfaceTile = tile.data;
     // const loaded = surfaceTile.loadedTerrain;
@@ -363,7 +324,7 @@ function processTerrainStateMachine(tile: any, frameState: any, terrainProvider:
         createResources(surfaceTile, frameState.context, terrainProvider, tile.x, tile.y, tile.level, vertexArraysToDestroy);
 
         // Update the tile's exaggeration in case the globe's exaggeration changed while the tile was being processed
-        // surfaceTile.updateExaggeration(tile, frameState, quadtree);
+        surfaceTile.updateExaggeration(tile, frameState, quadtree);
     }
 
     if (surfaceTile.terrainState >= TerrainState.RECEIVED && surfaceTile.waterMaskTexture === undefined && terrainProvider.hasWaterMask) {
@@ -399,66 +360,6 @@ function getUpsampleTileDetails(tile: any) {
         y: sourceTile.y,
         level: sourceTile.level,
     };
-}
-
-function propagateNewUpsampledDataToChildren(tile: any) {
-    // Now that there's new data for this tile:
-    //  - child tiles that were previously upsampled need to be re-upsampled based on the new data.
-
-    // Generally this is only necessary when a child tile is upsampled, and then one
-    // of its ancestors receives new (better) data and we want to re-upsample from the
-    // new data.
-
-    propagateNewUpsampledDataToChild(tile, tile._southwestChild);
-    propagateNewUpsampledDataToChild(tile, tile._southeastChild);
-    propagateNewUpsampledDataToChild(tile, tile._northwestChild);
-    propagateNewUpsampledDataToChild(tile, tile._northeastChild);
-}
-
-function propagateNewUpsampledDataToChild(tile: any, childTile: any) {
-    if (defined(childTile) && childTile.state !== QuadtreeTileLoadState.START) {
-        const childSurfaceTile = childTile.data;
-        if (defined(childSurfaceTile.terrainData) && !childSurfaceTile.terrainData.wasCreatedByUpsampling()) {
-            // Data for the child tile has already been loaded.
-            return;
-        }
-
-        // Restart the upsampling process, no matter its current state.
-        // We create a new instance rather than just restarting the existing one
-        // because there could be an asynchronous operation pending on the existing one.
-        if (defined(childSurfaceTile.upsampledTerrain)) {
-            childSurfaceTile.upsampledTerrain.freeResources();
-        }
-        childSurfaceTile.upsampledTerrain = new TileTerrain({
-            data: tile.data.terrainData,
-            x: tile.x,
-            y: tile.y,
-            level: tile.level,
-        });
-
-        childTile.state = QuadtreeTileLoadState.LOADING;
-    }
-}
-
-function isDataAvailable(tile: any, terrainProvider: any) {
-    const tileDataAvailable = terrainProvider.getTileDataAvailable(tile.x, tile.y, tile.level);
-    if (defined(tileDataAvailable)) {
-        return tileDataAvailable;
-    }
-
-    const parent = tile.parent;
-    if (!defined(parent)) {
-        // Data is assumed to be available for root tiles.
-        return true;
-    }
-
-    if (!defined(parent.data) || !defined(parent.data.terrainData)) {
-        // Parent tile data is not yet received or upsampled, so assume (for now) that this
-        // child tile is not available.
-        return false;
-    }
-
-    return parent.data.terrainData.isChildAvailable(parent.x, parent.y, tile.x, tile.y);
 }
 
 export default class GlobeSurfaceTile {
@@ -500,6 +401,16 @@ export default class GlobeSurfaceTile {
     fill: any;
     mesh: any;
     boundingVolumeIsFromMesh = false;
+
+    get renderedMesh(): any {
+        if (defined(this.vertexArray)) {
+            return this.mesh;
+        } else if (defined(this.fill)) {
+            return this.fill.mesh;
+        }
+        return undefined;
+    }
+
     freeVertexArray(): void {
         let indexBuffer;
 
@@ -710,4 +621,180 @@ export default class GlobeSurfaceTile {
 
         this.freeVertexArray();
     }
+
+    pick(ray: any, mode: any, projection: any, cullBackFaces: any, result: any): any {
+        const mesh = this.renderedMesh;
+        if (!defined(mesh)) {
+            return undefined;
+        }
+
+        const vertices = mesh.vertices;
+        const indices = mesh.indices;
+        const encoding = mesh.encoding;
+        const indicesLength = indices.length;
+
+        let minT = Number.MAX_VALUE;
+
+        for (let i = 0; i < indicesLength; i += 3) {
+            const i0 = indices[i];
+            const i1 = indices[i + 1];
+            const i2 = indices[i + 2];
+
+            const v0 = getPosition(encoding, mode, projection, vertices, i0, scratchV0);
+            const v1 = getPosition(encoding, mode, projection, vertices, i1, scratchV1);
+            const v2 = getPosition(encoding, mode, projection, vertices, i2, scratchV2);
+
+            const t = IntersectionTests.rayTriangleParametric(ray, v0, v1, v2, cullBackFaces) as number;
+            if (defined(t) && t < minT && t >= 0.0) {
+                minT = t;
+            }
+        }
+
+        return minT !== Number.MAX_VALUE ? CesiumRay.getPoint(ray, minT, result) : undefined;
+    }
+
+    removeGeodeticSurfaceNormals(frameState: FrameState): void {
+        toggleGeodeticSurfaceNormals(this, false, undefined, frameState);
+    }
+
+    updateExaggeration(tile: any, frameState: any, quadtree: any) {
+        const surfaceTile = this;
+        const mesh = surfaceTile.renderedMesh;
+        if (mesh === undefined) {
+            return;
+        }
+
+        // Check the tile's terrain encoding to see if it has been exaggerated yet
+        const exaggeration = frameState.terrainExaggeration;
+        const exaggerationRelativeHeight = frameState.terrainExaggerationRelativeHeight;
+        const hasExaggerationScale = exaggeration !== 1.0;
+
+        const encoding = mesh.encoding;
+        const encodingExaggerationScaleChanged = encoding.exaggeration !== exaggeration;
+        const encodingRelativeHeightChanged = encoding.exaggerationRelativeHeight !== exaggerationRelativeHeight;
+
+        if (encodingExaggerationScaleChanged || encodingRelativeHeightChanged) {
+            // Turning exaggeration scale on/off requires adding or removing geodetic surface normals
+            // Relative height only translates, so it has no effect on normals
+            if (encodingExaggerationScaleChanged) {
+                if (hasExaggerationScale && !encoding.hasGeodeticSurfaceNormals) {
+                    const ellipsoid = tile.tilingScheme.ellipsoid;
+                    surfaceTile.addGeodeticSurfaceNormals(ellipsoid, frameState);
+                } else if (!hasExaggerationScale && encoding.hasGeodeticSurfaceNormals) {
+                    surfaceTile.removeGeodeticSurfaceNormals(frameState);
+                }
+            }
+
+            encoding.exaggeration = exaggeration;
+            encoding.exaggerationRelativeHeight = exaggerationRelativeHeight;
+
+            // Notify the quadtree that this tile's height has changed
+            if (quadtree !== undefined) {
+                quadtree._tileToUpdateHeights.push(tile);
+                const customData = tile.customData;
+                const customDataLength = customData.length;
+                for (let i = 0; i < customDataLength; i++) {
+                    // Restart the level so that a height update is triggered
+                    const data = customData[i];
+                    data.level = -1;
+                }
+            }
+        }
+    }
+
+    addGeodeticSurfaceNormals(ellipsoid: Ellipsoid, frameState: FrameState): void {
+        toggleGeodeticSurfaceNormals(this, true, ellipsoid, frameState);
+    }
+
+    static _freeVertexArray(vertexArray: BufferGeometry): void {
+        if (defined(vertexArray)) {
+            const indexBuffer = vertexArray.index;
+
+            // if (!vertexArray.isDestroyed()) {
+            //     vertexArray.destroy();
+            // }
+
+            // if (
+            //     defined(indexBuffer) &&
+            // !indexBuffer.isDestroyed() &&
+            // defined(indexBuffer.referenceCount)
+            // ) {
+            //     --indexBuffer.referenceCount;
+            //     if (indexBuffer.referenceCount === 0) {
+            //         indexBuffer.destroy();
+            //     }
+            // }
+
+            // let attributes = vertexArray.attributes;
+
+            // for (const key in attributes) {
+            //     // (attributes[key] as BufferAttribute).array = [];
+            //     // (attributes[key] as any) = null;
+
+            //     if (attributes[key] instanceof InterleavedBufferAttribute) {
+            //         (attributes[key] as InterleavedBufferAttribute).data.array = [];
+            //     } else if (attributes[key] instanceof BufferAttribute) {
+            //         (attributes[key] as BufferAttribute).array = [];
+            //     }
+            // }
+            // attributes = {};
+            // if (defined(indexBuffer)) {
+            //     (indexBuffer as BufferAttribute).array = [];
+            //     indexBuffer = null;
+            // }
+
+            vertexArray.dispose();
+        }
+    }
+}
+
+const scratchCartographic = new Cartographic();
+
+function getPosition(encoding: any, mode: any, projection: any, vertices: any, index: any, result: any) {
+    let position = encoding.getExaggeratedPosition(vertices, index, result);
+
+    if (defined(mode) && mode !== SceneMode.SCENE3D) {
+        const ellipsoid = projection.ellipsoid;
+        const positionCartographic = ellipsoid.cartesianToCartographic(position, scratchCartographic);
+        position = projection.project(positionCartographic, result);
+        position = Cartesian3.fromElements(position.z, position.x, position.y, result);
+    }
+
+    return position;
+}
+
+function toggleGeodeticSurfaceNormals(surfaceTile: any, enabled: any, ellipsoid: any, frameState: any) {
+    const renderedMesh = surfaceTile.renderedMesh;
+    const vertexBuffer = renderedMesh.vertices;
+    const encoding = renderedMesh.encoding;
+    const vertexCount = vertexBuffer.length / encoding.stride;
+
+    // Calculate the new stride and generate a new buffer
+    // Clone the other encoding, toggle geodetic surface normals, then clone again to get updated stride
+    let newEncoding = TerrainEncoding.clone(encoding) as TerrainEncoding;
+    newEncoding.hasGeodeticSurfaceNormals = enabled;
+    newEncoding = TerrainEncoding.clone(newEncoding) as TerrainEncoding;
+    const newStride = newEncoding.stride;
+    const newVertexBuffer = new Float32Array(vertexCount * newStride);
+
+    if (enabled) {
+        encoding.addGeodeticSurfaceNormals(vertexBuffer, newVertexBuffer, ellipsoid);
+    } else {
+        encoding.removeGeodeticSurfaceNormals(vertexBuffer, newVertexBuffer);
+    }
+
+    renderedMesh.vertices = newVertexBuffer;
+    renderedMesh.stride = newStride;
+
+    // delete the old vertex array (which deletes the vertex buffer attached to it), and create a new vertex array with the new vertex buffer
+    const isFill = renderedMesh !== surfaceTile.mesh;
+    if (isFill) {
+        GlobeSurfaceTile._freeVertexArray(surfaceTile.fill.vertexArray);
+        surfaceTile.fill.vertexArray = GlobeSurfaceTile._createVertexArrayForMesh(frameState.context, renderedMesh);
+    } else {
+        GlobeSurfaceTile._freeVertexArray(surfaceTile.vertexArray);
+        surfaceTile.vertexArray = GlobeSurfaceTile._createVertexArrayForMesh(frameState.context, renderedMesh);
+    }
+    GlobeSurfaceTile._freeVertexArray(surfaceTile.wireframeVertexArray);
+    surfaceTile.wireframeVertexArray = undefined;
 }

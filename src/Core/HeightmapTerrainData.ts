@@ -1,9 +1,12 @@
+import BoundingSphere from './BoundingSphere';
+import Cartesian3 from './Cartesian3';
 import createVerticesFromHeightmap from './createVerticesFromHeightmap';
 import { defaultValue } from './defaultValue';
 import defined from './defined';
 import { GeographicProjection } from './GeographicProjection';
 import HeightmapEncoding from './HeightmapEncoding';
 import HeightmapTessellator from './HeightmapTessellator';
+import OrientedBoundingBox from './OrientedBoundingBox';
 import Rectangle from './Rectangle';
 import TerrainEncoding from './TerrainEncoding';
 import TerrainMesh from './TerrainMesh';
@@ -144,10 +147,36 @@ class HeightmapTerrainData {
 
         const that = this;
         return Promise.resolve(verticesPromise).then(function (result: any) {
-            debugger;
-            that._mesh = new TerrainMesh(center, new Float32Array(result.vertices), TerrainProvider.getRegularGridIndices(result.gridWidth, result.gridHeight), result.minimumHeight, result.maximumHeight, result.boundingSphere3D, result.occludeePointInScaledSpace, result.numberOfAttributes, result.orientedBoundingBox, TerrainEncoding.clone(result.encoding), exaggeration);
+            let indicesAndEdges;
+            if ((that._skirtHeight as number) > 0.0) {
+                indicesAndEdges = TerrainProvider.getRegularGridAndSkirtIndicesAndEdgeIndices(result.gridWidth, result.gridHeight);
+            } else {
+                indicesAndEdges = TerrainProvider.getRegularGridIndicesAndEdgeIndices(result.gridWidth, result.gridHeight);
+            }
 
-            that._mesh.levelId = `${level}/${x}/${y}`;
+            const vertexCountWithoutSkirts = result.gridWidth * result.gridHeight;
+
+            // Clone complex result objects because the transfer from the web worker
+            // has stripped them down to JSON-style objects.
+            that._mesh = new TerrainMesh(
+                center,
+                new Float32Array(result.vertices),
+                indicesAndEdges.indices,
+                indicesAndEdges.indexCountWithoutSkirts,
+                vertexCountWithoutSkirts,
+                result.minimumHeight,
+                result.maximumHeight,
+                BoundingSphere.clone(result.boundingSphere3D),
+                Cartesian3.clone(result.occludeePointInScaledSpace),
+                result.numberOfAttributes,
+                OrientedBoundingBox.clone(result.orientedBoundingBox),
+                TerrainEncoding.clone(result.encoding),
+                indicesAndEdges.westIndicesSouthToNorth,
+                indicesAndEdges.southIndicesEastToWest,
+                indicesAndEdges.eastIndicesNorthToSouth,
+                indicesAndEdges.northIndicesWestToEast
+            );
+
             // Free memory received from server after mesh is created.
             that._buffer = undefined;
             return that._mesh;

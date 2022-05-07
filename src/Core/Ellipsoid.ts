@@ -1,6 +1,7 @@
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
 import { CesiumMath } from './CesiumMath';
+import { defaultValue } from './defaultValue';
 import defined from './defined';
 import scaleToGeodeticSurface from './scaleToGeodeticSurface';
 
@@ -358,5 +359,61 @@ export default class Ellipsoid {
         (result as Ellipsoid)._centerToleranceSquared = ellipsoid._centerToleranceSquared;
 
         return result as Ellipsoid;
+    }
+
+    /**
+     * Computes an Ellipsoid from a Cartesian specifying the radii in x, y, and z directions.
+     *
+     * @param {Cartesian3} [cartesian=Cartesian3.ZERO] The ellipsoid's radius in the x, y, and z directions.
+     * @param {Ellipsoid} [result] The object onto which to store the result, or undefined if a new
+     *                    instance should be created.
+     * @returns {Ellipsoid} A new Ellipsoid instance.
+     *
+     * @exception {DeveloperError} All radii components must be greater than or equal to zero.
+     *
+     * @see Ellipsoid.WGS84
+     * @see Ellipsoid.UNIT_SPHERE
+     */
+    static fromCartesian3(cartesian = Cartesian3.ZERO, result = new Ellipsoid()): Ellipsoid {
+        if (!defined(result)) {
+            result = new Ellipsoid();
+        }
+
+        if (!defined(cartesian)) {
+            return result;
+        }
+
+        initialize(result, cartesian.x, cartesian.y, cartesian.z);
+        return result;
+    }
+
+    /**
+     * Computes a point which is the intersection of the surface normal with the z-axis.
+     *
+     * @param {Cartesian3} position the position. must be on the surface of the ellipsoid.
+     * @param {Number} [buffer = 0.0] A buffer to subtract from the ellipsoid size when checking if the point is inside the ellipsoid.
+     *                                In earth case, with common earth datums, there is no need for this buffer since the intersection point is always (relatively) very close to the center.
+     *                                In WGS84 datum, intersection point is at max z = +-42841.31151331382 (0.673% of z-axis).
+     *                                Intersection point could be outside the ellipsoid if the ratio of MajorAxis / AxisOfRotation is bigger than the square root of 2
+     * @param {Cartesian3} [result] The cartesian to which to copy the result, or undefined to create and
+     *        return a new instance.
+     * @returns {Cartesian3 | undefined} the intersection point if it's inside the ellipsoid, undefined otherwise
+     *
+     * @exception {DeveloperError} position is required.
+     * @exception {DeveloperError} Ellipsoid must be an ellipsoid of revolution (radii.x == radii.y).
+     * @exception {DeveloperError} Ellipsoid.radii.z must be greater than 0.
+     */
+    getSurfaceNormalIntersectionWithZAxis(position: Cartesian3, buffer = 0.0, result = new Cartesian3()): Cartesian3 | undefined {
+        const squaredXOverSquaredZ = this._squaredXOverSquaredZ;
+
+        result.x = 0.0;
+        result.y = 0.0;
+        result.z = position.z * (1 - squaredXOverSquaredZ);
+
+        if (Math.abs(result.z) >= this._radii.z - buffer) {
+            return undefined;
+        }
+
+        return result;
     }
 }

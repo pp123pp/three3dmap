@@ -2,34 +2,48 @@ import Ellipsoid from './Ellipsoid';
 import HeightmapTessellator from './HeightmapTessellator';
 import Rectangle from './Rectangle';
 
-export default function createVerticesFromHeightmap(parameters: any) {
-    let arrayWidth = parameters.width;
-    let arrayHeight = parameters.height;
+function createVerticesFromHeightmap(parameters: any, transferableObjects?: any) {
+    // LERC encoded buffers must be decoded, then we can process them like normal
+    // if (parameters.encoding === HeightmapEncoding.LERC) {
+    //     let result;
+    //     try {
+    //         result = Lerc.decode(parameters.heightmap);
+    //     } catch (error) {
+    //         throw new RuntimeError(error);
+    //     }
 
-    if (parameters.skirtHeight > 0.0) {
-        arrayWidth += 2;
-        arrayHeight += 2;
-    }
+    //     const lercStatistics = result.statistics[0];
+    //     if (lercStatistics.minValue === Number.MAX_VALUE) {
+    //         throw new RuntimeError('Invalid tile data');
+    //     }
+
+    //     parameters.heightmap = result.pixels[0];
+    //     parameters.width = result.width;
+    //     parameters.height = result.height;
+    // }
 
     parameters.ellipsoid = Ellipsoid.clone(parameters.ellipsoid);
     parameters.rectangle = Rectangle.clone(parameters.rectangle);
 
-    const statistics = HeightmapTessellator.computeVertices(parameters);
+    const statistics = HeightmapTessellator.computeVertices(parameters) as any;
     const vertices = statistics.vertices;
-    // transferableObjects.push(vertices.buffer);
+    //   transferableObjects.push(vertices.buffer);
 
     return {
         vertices: vertices.buffer,
-        numberOfAttributes: statistics.encoding.getStride(),
+        numberOfAttributes: statistics.encoding.stride,
         minimumHeight: statistics.minimumHeight,
         maximumHeight: statistics.maximumHeight,
-        gridWidth: arrayWidth,
-        gridHeight: arrayHeight,
+        gridWidth: parameters.width,
+        gridHeight: parameters.height,
         boundingSphere3D: statistics.boundingSphere3D,
         orientedBoundingBox: statistics.orientedBoundingBox,
         occludeePointInScaledSpace: statistics.occludeePointInScaledSpace,
         encoding: statistics.encoding,
+        westIndicesSouthToNorth: statistics.westIndicesSouthToNorth,
+        southIndicesEastToWest: statistics.southIndicesEastToWest,
+        eastIndicesNorthToSouth: statistics.eastIndicesNorthToSouth,
+        northIndicesWestToEast: statistics.northIndicesWestToEast,
     };
 }
-
-export { createVerticesFromHeightmap };
+export default createVerticesFromHeightmap;

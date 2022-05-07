@@ -50,6 +50,17 @@ export default class Cartesian2 extends Vector2 {
     }
 
     /**
+     * Creates a Cartesian2 instance from an existing Cartesian3.  This simply takes the
+     * x and y properties of the Cartesian3 and drops z.
+     * @function
+     *
+     * @param {Cartesian3} cartesian The Cartesian3 instance to create a Cartesian2 instance from.
+     * @param {Cartesian2} [result] The object onto which to store the result.
+     * @returns {Cartesian2} The modified result parameter or a new Cartesian2 instance if one was not provided.
+     */
+    static fromCartesian3 = Cartesian2.clone;
+
+    /**
      * Multiplies the provided Cartesian componentwise by the provided scalar.
      *
      * @param {Cartesian2} cartesian The Cartesian to be scaled.

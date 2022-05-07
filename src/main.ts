@@ -18,7 +18,7 @@ const axesHelper = new AxesHelper(500000000);
 scene.addObject(axesHelper);
 
 // scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
-const ps = new Cartesian3(63916973.15163071, 3088494.933613418, 9994134.16404095);
-camera.setView({
-    destination: ps,
-});
+// const ps = new Cartesian3(63916973.15163071, 3088494.933613418, 9994134.16404095);
+// camera.setView({
+//     destination: ps,
+// });

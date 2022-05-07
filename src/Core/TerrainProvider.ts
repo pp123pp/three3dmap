@@ -2,9 +2,12 @@ import { CesiumMath } from './CesiumMath';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 import Ellipsoid from './Ellipsoid';
+import IndexDatatype from './IndexDatatype';
 
 const regularGridIndexArrays: any[] = [];
 const regularGridAndSkirtAndEdgeIndicesCache: any[] = [];
+
+const regularGridAndEdgeIndicesCache: any[] = [];
 
 function getEdgeIndices(width: number, height: number) {
     const westIndicesSouthToNorth = new Array(height);
@@ -131,7 +134,7 @@ export default class TerrainProvider {
      * @param {Number} height The number of vertices in the regular grid in the vertical direction.
      * @returns {Uint16Array} The list of indices.
      */
-    static getRegularGridIndices(width: number, height: number) {
+    static getRegularGridIndices(width: number, height: number): Uint16Array {
         let byWidth = regularGridIndexArrays[width];
         if (!defined(byWidth)) {
             regularGridIndexArrays[width] = byWidth = [];
@@ -272,4 +275,145 @@ export default class TerrainProvider {
 
     //     return indicesAndEdges;
     // }
+
+    /**
+     * @private
+     */
+    static getRegularGridAndSkirtIndicesAndEdgeIndices(width: number, height: number) {
+        //>>includeStart('debug', pragmas.debug);
+        if (width * height >= CesiumMath.FOUR_GIGABYTES) {
+            throw new DeveloperError('The total number of vertices (width * height) must be less than 4,294,967,296.');
+        }
+        //>>includeEnd('debug');
+
+        let byWidth = regularGridAndSkirtAndEdgeIndicesCache[width];
+        if (!defined(byWidth)) {
+            regularGridAndSkirtAndEdgeIndicesCache[width] = byWidth = [];
+        }
+
+        let indicesAndEdges = byWidth[height];
+        if (!defined(indicesAndEdges)) {
+            const gridVertexCount = width * height;
+            const gridIndexCount = (width - 1) * (height - 1) * 6;
+            const edgeVertexCount = width * 2 + height * 2;
+            const edgeIndexCount = Math.max(0, edgeVertexCount - 4) * 6;
+            const vertexCount = gridVertexCount + edgeVertexCount;
+            const indexCount = gridIndexCount + edgeIndexCount;
+
+            const edgeIndices = getEdgeIndices(width, height);
+            const westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
+            const southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
+            const eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
+            const northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+
+            const indices = IndexDatatype.createTypedArray(vertexCount, indexCount);
+            addRegularGridIndices(width, height, indices, 0);
+            TerrainProvider.addSkirtIndices(westIndicesSouthToNorth, southIndicesEastToWest, eastIndicesNorthToSouth, northIndicesWestToEast, gridVertexCount, indices, gridIndexCount);
+
+            indicesAndEdges = byWidth[height] = {
+                indices: indices,
+                westIndicesSouthToNorth: westIndicesSouthToNorth,
+                southIndicesEastToWest: southIndicesEastToWest,
+                eastIndicesNorthToSouth: eastIndicesNorthToSouth,
+                northIndicesWestToEast: northIndicesWestToEast,
+                indexCountWithoutSkirts: gridIndexCount,
+            };
+        }
+
+        return indicesAndEdges;
+    }
+
+    /**
+     * @private
+     */
+    static addSkirtIndices(westIndicesSouthToNorth: any, southIndicesEastToWest: any, eastIndicesNorthToSouth: any, northIndicesWestToEast: any, vertexCount: any, indices: any, offset: any) {
+        let vertexIndex = vertexCount;
+        offset = addSkirtIndices(westIndicesSouthToNorth, vertexIndex, indices, offset);
+        vertexIndex += westIndicesSouthToNorth.length;
+        offset = addSkirtIndices(southIndicesEastToWest, vertexIndex, indices, offset);
+        vertexIndex += southIndicesEastToWest.length;
+        offset = addSkirtIndices(eastIndicesNorthToSouth, vertexIndex, indices, offset);
+        vertexIndex += eastIndicesNorthToSouth.length;
+        addSkirtIndices(northIndicesWestToEast, vertexIndex, indices, offset);
+    }
+
+    /**
+     * @private
+     */
+    static getRegularGridIndicesAndEdgeIndices(width: number, height: number) {
+        //>>includeStart('debug', pragmas.debug);
+        if (width * height >= CesiumMath.FOUR_GIGABYTES) {
+            throw new DeveloperError('The total number of vertices (width * height) must be less than 4,294,967,296.');
+        }
+        //>>includeEnd('debug');
+
+        let byWidth = regularGridAndEdgeIndicesCache[width];
+        if (!defined(byWidth)) {
+            regularGridAndEdgeIndicesCache[width] = byWidth = [];
+        }
+
+        let indicesAndEdges = byWidth[height];
+        if (!defined(indicesAndEdges)) {
+            const indices = TerrainProvider.getRegularGridIndices(width, height);
+
+            const edgeIndices = getEdgeIndices(width, height);
+            const westIndicesSouthToNorth = edgeIndices.westIndicesSouthToNorth;
+            const southIndicesEastToWest = edgeIndices.southIndicesEastToWest;
+            const eastIndicesNorthToSouth = edgeIndices.eastIndicesNorthToSouth;
+            const northIndicesWestToEast = edgeIndices.northIndicesWestToEast;
+
+            indicesAndEdges = byWidth[height] = {
+                indices: indices,
+                westIndicesSouthToNorth: westIndicesSouthToNorth,
+                southIndicesEastToWest: southIndicesEastToWest,
+                eastIndicesNorthToSouth: eastIndicesNorthToSouth,
+                northIndicesWestToEast: northIndicesWestToEast,
+            };
+        }
+
+        return indicesAndEdges;
+    }
+}
+function addRegularGridIndices(width: number, height: number, indices: any, offset: number) {
+    let index = 0;
+    for (let j = 0; j < height - 1; ++j) {
+        for (let i = 0; i < width - 1; ++i) {
+            const upperLeft = index;
+            const lowerLeft = upperLeft + width;
+            const lowerRight = lowerLeft + 1;
+            const upperRight = upperLeft + 1;
+
+            indices[offset++] = upperLeft;
+            indices[offset++] = lowerLeft;
+            indices[offset++] = upperRight;
+            indices[offset++] = upperRight;
+            indices[offset++] = lowerLeft;
+            indices[offset++] = lowerRight;
+
+            ++index;
+        }
+        ++index;
+    }
+}
+
+function addSkirtIndices(edgeIndices: any, vertexIndex: any, indices: any, offset: any) {
+    let previousIndex = edgeIndices[0];
+
+    const length = edgeIndices.length;
+    for (let i = 1; i < length; ++i) {
+        const index = edgeIndices[i];
+
+        indices[offset++] = previousIndex;
+        indices[offset++] = index;
+        indices[offset++] = vertexIndex;
+
+        indices[offset++] = vertexIndex;
+        indices[offset++] = index;
+        indices[offset++] = vertexIndex + 1;
+
+        previousIndex = index;
+        ++vertexIndex;
+    }
+
+    return offset;
 }

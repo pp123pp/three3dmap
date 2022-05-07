@@ -22,6 +22,7 @@ import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import MapCamera from './MapCamera';
 import PerspectiveFrustumCamera from './PerspectiveFrustumCamera';
+import ScreenSpaceCameraController from './ScreenSpaceCameraController';
 import TileCoordinatesImageryProvider from './TileCoordinatesImageryProvider';
 
 interface SceneOptions {
@@ -198,7 +199,7 @@ export default class MapScene extends Scene {
 
     readonly tweens = new TweenCollection();
 
-    readonly mode = SceneMode.COLUMBUS_VIEW;
+    readonly mode: SceneMode = SceneMode.COLUMBUS_VIEW;
 
     readonly computeEngine: ComputeEngine;
 
@@ -211,13 +212,17 @@ export default class MapScene extends Scene {
     public backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
     readonly effectComposerCollection: EffectComposerCollection;
 
-    readonly screenSpaceCameraController: OrbitControls;
+    readonly screenSpaceCameraController: ScreenSpaceCameraController;
     mapProjection = new GeographicProjection();
 
     _globe?: Globe;
 
     _removeGlobeCallbacks: any[] = [];
 
+    readonly cameraUnderground = false;
+
+    readonly pickPositionSupported = true;
+    _globeHeight?: number;
     constructor(options: SceneOptions) {
         super();
 
@@ -254,7 +259,9 @@ export default class MapScene extends Scene {
 
         this.effectComposerCollection = new EffectComposerCollection(this);
 
-        this.screenSpaceCameraController = new OrbitControls(this.camera.frustum, this.canvas);
+        // this.screenSpaceCameraController = new OrbitControls(this.camera.frustum, this.canvas);
+
+        this.screenSpaceCameraController = new ScreenSpaceCameraController(this);
 
         const ellipsoid = defaultValue(this.mapProjection.ellipsoid, Ellipsoid.WGS84);
         this._globe = new Globe(ellipsoid);
@@ -296,6 +303,10 @@ export default class MapScene extends Scene {
         return this.globe.imageryLayers;
     }
 
+    get globeHeight(): number {
+        return this._globeHeight as number;
+    }
+
     initializeFrame(): void {
         if (this.shaderFrameCount++ === 120) {
             this.shaderFrameCount = 0;
@@ -304,7 +315,7 @@ export default class MapScene extends Scene {
 
         // this.camera.update(this._mode);
 
-        // this._globeHeight = getGlobeHeight(this);
+        this._globeHeight = getGlobeHeight(this);
         // this._cameraUnderground = isCameraUnderground(this);
 
         this.screenSpaceCameraController.update();
@@ -408,4 +419,13 @@ export default class MapScene extends Scene {
         const frameState = this.frameState;
         const globe = this.globe;
     }
+}
+function getGlobeHeight(scene: MapScene) {
+    const globe = scene._globe as Globe;
+    const camera = scene.camera;
+    const cartographic = camera.positionCartographic;
+    if (defined(globe) && globe.visible && defined(cartographic)) {
+        return globe.getHeight(cartographic);
+    }
+    return undefined;
 }

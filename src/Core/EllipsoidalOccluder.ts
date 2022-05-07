@@ -4,6 +4,7 @@ import Ellipsoid from './Ellipsoid';
 
 const scaledSpaceScratch = new Cartesian3();
 const directionScratch = new Cartesian3();
+const scratchEllipsoidShrunk = Ellipsoid.clone(Ellipsoid.UNIT_SPHERE);
 
 const computeMagnitude = function (ellipsoid: Ellipsoid, position: Cartesian3, scaledSpaceDirectionToPoint: Cartesian3) {
     const scaledSpacePosition = ellipsoid.transformPositionToScaledSpace(position, scaledSpaceScratch);
@@ -45,18 +46,22 @@ const computeScaledSpaceDirectionToPoint = function (ellipsoid: Ellipsoid, direc
 };
 
 export default class EllipsoidalOccluder {
-    readonly ellipsoid: Ellipsoid;
+    _ellipsoid: Ellipsoid;
     _cameraPosition = new Cartesian3();
     _cameraPositionInScaledSpace = new Cartesian3();
     _distanceToLimbInScaledSpaceSquared = 0.0;
 
     constructor(ellipsoid: Ellipsoid, cameraPosition = new Cartesian3()) {
-        this.ellipsoid = ellipsoid;
+        this._ellipsoid = ellipsoid;
 
         // cameraPosition fills in the above values
         if (defined(cameraPosition)) {
             this.cameraPosition = cameraPosition;
         }
+    }
+
+    get ellipsoid(): Ellipsoid {
+        return this._ellipsoid;
     }
 
     get cameraPosition(): Cartesian3 {
@@ -103,4 +108,53 @@ export default class EllipsoidalOccluder {
 
         return magnitudeToPoint(scaledSpaceDirectionToPoint, resultMagnitude, result) as Cartesian3;
     }
+
+    /**
+     * Similar to {@link EllipsoidalOccluder#computeHorizonCullingPoint} except computes the culling
+     * point relative to an ellipsoid that has been shrunk by the minimum height when the minimum height is below
+     * the ellipsoid. The returned point is expressed in the possibly-shrunk ellipsoid-scaled space and is suitable
+     * for use with {@link EllipsoidalOccluder#isScaledSpacePointVisiblePossiblyUnderEllipsoid}.
+     *
+     * @param {Cartesian3} directionToPoint The direction that the computed point will lie along.
+     *                     A reasonable direction to use is the direction from the center of the ellipsoid to
+     *                     the center of the bounding sphere computed from the positions.  The direction need not
+     *                     be normalized.
+     * @param {Cartesian3[]} positions The positions from which to compute the horizon culling point.  The positions
+     *                       must be expressed in a reference frame centered at the ellipsoid and aligned with the
+     *                       ellipsoid's axes.
+     * @param {Number} [minimumHeight] The minimum height of all positions. If this value is undefined, all positions are assumed to be above the ellipsoid.
+     * @param {Cartesian3} [result] The instance on which to store the result instead of allocating a new instance.
+     * @returns {Cartesian3} The computed horizon culling point, expressed in the possibly-shrunk ellipsoid-scaled space.
+     */
+    computeHorizonCullingPointPossiblyUnderEllipsoid(directionToPoint: Cartesian3, positions: Cartesian3[], minimumHeight?: number, result?: Cartesian3): Cartesian3 {
+        const possiblyShrunkEllipsoid = getPossiblyShrunkEllipsoid(this._ellipsoid, minimumHeight, scratchEllipsoidShrunk);
+        return computeHorizonCullingPointFromPositions(possiblyShrunkEllipsoid, directionToPoint, positions, result) as Cartesian3;
+    }
+}
+
+const scratchEllipsoidShrunkRadii = new Cartesian3();
+
+function getPossiblyShrunkEllipsoid(ellipsoid: Ellipsoid, minimumHeight?: number, result?: Ellipsoid) {
+    if (defined(minimumHeight) && (minimumHeight as number) < 0.0 && ellipsoid.minimumRadius > -(minimumHeight as number)) {
+        const ellipsoidShrunkRadii = Cartesian3.fromElements(ellipsoid.radii.x + (minimumHeight as number), ellipsoid.radii.y + (minimumHeight as number), ellipsoid.radii.z + (minimumHeight as number), scratchEllipsoidShrunkRadii);
+        ellipsoid = Ellipsoid.fromCartesian3(ellipsoidShrunkRadii, result);
+    }
+    return ellipsoid;
+}
+
+function computeHorizonCullingPointFromPositions(ellipsoid: Ellipsoid, directionToPoint: Cartesian3, positions: Cartesian3[], result = new Cartesian3()) {
+    const scaledSpaceDirectionToPoint = computeScaledSpaceDirectionToPoint(ellipsoid, directionToPoint);
+    let resultMagnitude = 0.0;
+
+    for (let i = 0, len = positions.length; i < len; ++i) {
+        const position = positions[i];
+        const candidateMagnitude = computeMagnitude(ellipsoid, position, scaledSpaceDirectionToPoint);
+        if (candidateMagnitude < 0.0) {
+            // all points should face the same direction, but this one doesn't, so return undefined
+            return undefined;
+        }
+        resultMagnitude = Math.max(resultMagnitude, candidateMagnitude);
+    }
+
+    return magnitudeToPoint(scaledSpaceDirectionToPoint, resultMagnitude, result);
 }

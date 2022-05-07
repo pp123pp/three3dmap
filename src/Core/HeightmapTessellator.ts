@@ -110,6 +110,7 @@ const HeightmapTessellator = {
         relativeToCenter: Cartesian3;
         includeWebMercatorT: boolean;
         ellipsoid: Ellipsoid;
+        exaggerationRelativeHeight: number;
         structure: {
             heightScale: number;
             heightOffset: number;
@@ -120,7 +121,7 @@ const HeightmapTessellator = {
             highestEncodedHeight: number;
             isBigEndian: boolean;
         };
-    }) {
+    }): any {
         // This function tends to be a performance hotspot for terrain rendering,
         // so it employs a lot of inlining and unrolling as an optimization.
         // In particular, the functionality of Ellipsoid.cartographicToCartesian
@@ -138,20 +139,21 @@ const HeightmapTessellator = {
         const width = options.width;
         const height = options.height;
         const skirtHeight = options.skirtHeight;
+        const hasSkirts = skirtHeight > 0.0;
 
         const isGeographic = defaultValue(options.isGeographic, true);
         const ellipsoid = defaultValue(options.ellipsoid, Ellipsoid.WGS84);
 
         const oneOverGlobeSemimajorAxis = 1.0 / ellipsoid.maximumRadius;
 
-        const nativeRectangle = options.nativeRectangle;
+        const nativeRectangle = Rectangle.clone(options.nativeRectangle) as Rectangle;
+        const rectangle = Rectangle.clone(options.rectangle) as Rectangle;
 
         let geographicWest;
         let geographicSouth;
         let geographicEast;
         let geographicNorth;
 
-        const rectangle = options.rectangle;
         if (!defined(rectangle)) {
             if (isGeographic) {
                 geographicWest = toRadians(nativeRectangle.west);
@@ -174,8 +176,12 @@ const HeightmapTessellator = {
         let relativeToCenter = options.relativeToCenter;
         const hasRelativeToCenter = defined(relativeToCenter);
         relativeToCenter = hasRelativeToCenter ? relativeToCenter : Cartesian3.ZERO;
-        const exaggeration = defaultValue(options.exaggeration, 1.0);
         const includeWebMercatorT = defaultValue(options.includeWebMercatorT, false);
+
+        const exaggeration = defaultValue(options.exaggeration, 1.0);
+        const exaggerationRelativeHeight = defaultValue(options.exaggerationRelativeHeight, 0.0);
+        const hasExaggeration = exaggeration !== 1.0;
+        const includeGeodeticSurfaceNormals = hasExaggeration;
 
         const structure = defaultValue(options.structure, HeightmapTessellator.DEFAULT_STRUCTURE);
         const heightScale = defaultValue(structure.heightScale, HeightmapTessellator.DEFAULT_STRUCTURE.heightScale);
@@ -207,8 +213,8 @@ const HeightmapTessellator = {
         const fromENU = (Transforms as any).eastNorthUpToFixedFrame(relativeToCenter, ellipsoid);
         const toENU = CesiumMatrix4.inverseTransformation(fromENU, matrix4Scratch);
 
-        let southMercatorY = 0.0;
-        let oneOverMercatorHeight = 0.0;
+        let southMercatorY;
+        let oneOverMercatorHeight;
         if (includeWebMercatorT) {
             southMercatorY = WebMercatorProjection.geodeticLatitudeToMercatorAngle(geographicSouth);
             oneOverMercatorHeight = 1.0 / (WebMercatorProjection.geodeticLatitudeToMercatorAngle(geographicNorth) - southMercatorY);
@@ -226,27 +232,29 @@ const HeightmapTessellator = {
 
         let hMin = Number.POSITIVE_INFINITY;
 
-        const arrayWidth = width + (skirtHeight > 0.0 ? 2.0 : 0.0);
-        const arrayHeight = height + (skirtHeight > 0.0 ? 2.0 : 0.0);
-        const size = arrayWidth * arrayHeight;
-        const positions = new Array(size);
-        const heights = new Array(size);
-        const uvs = new Array(size);
-        const webMercatorTs = includeWebMercatorT ? new Array(size) : [];
+        const gridVertexCount = width * height;
+        const edgeVertexCount = skirtHeight > 0.0 ? width * 2 + height * 2 : 0;
+        const vertexCount = gridVertexCount + edgeVertexCount;
+
+        const positions = new Array(vertexCount);
+        const heights = new Array(vertexCount);
+        const uvs = new Array(vertexCount);
+        const webMercatorTs = includeWebMercatorT ? new Array(vertexCount) : [];
+        const geodeticSurfaceNormals = includeGeodeticSurfaceNormals ? new Array(vertexCount) : [];
 
         let startRow = 0;
         let endRow = height;
         let startCol = 0;
         let endCol = width;
 
-        if (skirtHeight > 0) {
+        if (hasSkirts) {
             --startRow;
             ++endRow;
             --startCol;
             ++endCol;
         }
 
-        let index = 0;
+        const skirtOffsetPercentage = 0.00001;
 
         for (let rowIndex = startRow; rowIndex < endRow; ++rowIndex) {
             let row = rowIndex;
@@ -265,16 +273,26 @@ const HeightmapTessellator = {
                 latitude = toRadians(latitude);
             }
 
-            let cosLatitude = cos(latitude);
-            let nZ = sin(latitude);
-            let kZ = radiiSquaredZ * nZ;
-
             let v = (latitude - geographicSouth) / (geographicNorth - geographicSouth);
             v = CesiumMath.clamp(v, 0.0, 1.0);
 
+            const isNorthEdge = rowIndex === startRow;
+            const isSouthEdge = rowIndex === endRow - 1;
+            if (skirtHeight > 0.0) {
+                if (isNorthEdge) {
+                    latitude += skirtOffsetPercentage * rectangleHeight;
+                } else if (isSouthEdge) {
+                    latitude -= skirtOffsetPercentage * rectangleHeight;
+                }
+            }
+
+            const cosLatitude = cos(latitude);
+            const nZ = sin(latitude);
+            const kZ = radiiSquaredZ * nZ;
+
             let webMercatorT;
             if (includeWebMercatorT) {
-                webMercatorT = (WebMercatorProjection.geodeticLatitudeToMercatorAngle(latitude) - southMercatorY) * oneOverMercatorHeight;
+                webMercatorT = (WebMercatorProjection.geodeticLatitudeToMercatorAngle(latitude) - (southMercatorY as number)) * (oneOverMercatorHeight as number);
             }
 
             for (let colIndex = startCol; colIndex < endCol; ++colIndex) {
@@ -284,14 +302,6 @@ const HeightmapTessellator = {
                 }
                 if (col >= width) {
                     col = width - 1;
-                }
-
-                let longitude = nativeRectangle.west + granularityX * col;
-
-                if (!isGeographic) {
-                    longitude *= oneOverGlobeSemimajorAxis;
-                } else {
-                    longitude = toRadians(longitude);
                 }
 
                 const terrainOffset = row * (width * stride) + col * stride;
@@ -314,32 +324,51 @@ const HeightmapTessellator = {
                     }
                 }
 
-                heightSample = (heightSample * heightScale + heightOffset) * exaggeration;
-
-                let u = (longitude - geographicWest) / (geographicEast - geographicWest);
-                u = CesiumMath.clamp(u, 0.0, 1.0);
-                uvs[index] = new Cartesian2(u, v);
+                heightSample = heightSample * heightScale + heightOffset;
 
                 maximumHeight = Math.max(maximumHeight, heightSample);
                 minimumHeight = Math.min(minimumHeight, heightSample);
 
-                if (colIndex !== col || rowIndex !== row) {
-                    const percentage = 0.00001;
-                    if (colIndex < 0) {
-                        longitude -= percentage * rectangleWidth;
-                    } else {
-                        longitude += percentage * rectangleWidth;
-                    }
-                    if (rowIndex < 0) {
-                        latitude += percentage * rectangleHeight;
-                    } else {
-                        latitude -= percentage * rectangleHeight;
-                    }
+                let longitude = nativeRectangle.west + granularityX * col;
 
-                    cosLatitude = cos(latitude);
-                    nZ = sin(latitude);
-                    kZ = radiiSquaredZ * nZ;
-                    heightSample -= skirtHeight;
+                if (!isGeographic) {
+                    longitude = longitude * oneOverGlobeSemimajorAxis;
+                } else {
+                    longitude = toRadians(longitude);
+                }
+
+                let u = (longitude - geographicWest) / (geographicEast - geographicWest);
+                u = CesiumMath.clamp(u, 0.0, 1.0);
+
+                let index = row * width + col;
+
+                if (skirtHeight > 0.0) {
+                    const isWestEdge = colIndex === startCol;
+                    const isEastEdge = colIndex === endCol - 1;
+                    const isEdge = isNorthEdge || isSouthEdge || isWestEdge || isEastEdge;
+                    const isCorner = (isNorthEdge || isSouthEdge) && (isWestEdge || isEastEdge);
+                    if (isCorner) {
+                        // Don't generate skirts on the corners.
+                        continue;
+                    } else if (isEdge) {
+                        heightSample -= skirtHeight;
+
+                        if (isWestEdge) {
+                            // The outer loop iterates north to south but the indices are ordered south to north, hence the index flip below
+                            index = gridVertexCount + (height - row - 1);
+                            longitude -= skirtOffsetPercentage * rectangleWidth;
+                        } else if (isSouthEdge) {
+                            // Add after west indices. South indices are ordered east to west.
+                            index = gridVertexCount + height + (width - col - 1);
+                        } else if (isEastEdge) {
+                            // Add after west and south indices. East indices are ordered north to south. The index is flipped like above.
+                            index = gridVertexCount + height + width + row;
+                            longitude += skirtOffsetPercentage * rectangleWidth;
+                        } else if (isNorthEdge) {
+                            // Add after west, south, and east indices. North indices are ordered west to east.
+                            index = gridVertexCount + height + width + height + col;
+                        }
+                    }
                 }
 
                 const nX = cosLatitude * cos(longitude);
@@ -360,44 +389,44 @@ const HeightmapTessellator = {
                 position.y = rSurfaceY + nY * heightSample;
                 position.z = rSurfaceZ + nZ * heightSample;
 
+                CesiumMatrix4.multiplyByPoint(toENU, position, cartesian3Scratch);
+                Cartesian3.minimumByComponent(cartesian3Scratch, minimum, minimum);
+                Cartesian3.maximumByComponent(cartesian3Scratch, maximum, maximum);
+                hMin = Math.min(hMin, heightSample);
+
                 positions[index] = position;
+                uvs[index] = new Cartesian2(u, v);
                 heights[index] = heightSample;
 
                 if (includeWebMercatorT) {
                     webMercatorTs[index] = webMercatorT;
                 }
 
-                index++;
-
-                CesiumMatrix4.multiplyByPoint(toENU, position, cartesian3Scratch);
-
-                Cartesian3.minimumByComponent(cartesian3Scratch, minimum, minimum);
-                Cartesian3.maximumByComponent(cartesian3Scratch, maximum, maximum);
-                hMin = Math.min(hMin, heightSample);
+                if (includeGeodeticSurfaceNormals) {
+                    geodeticSurfaceNormals[index] = ellipsoid.geodeticSurfaceNormal(position);
+                }
             }
         }
 
         const boundingSphere3D = BoundingSphere.fromPoints(positions);
         let orientedBoundingBox;
-        if (defined(rectangle) && rectangle.width < CesiumMath.PI_OVER_TWO + CesiumMath.EPSILON5) {
-            // Here, rectangle.width < pi/2, and rectangle.height < pi
-            // (though it would still work with rectangle.width up to pi)
+        if (defined(rectangle)) {
             orientedBoundingBox = OrientedBoundingBox.fromRectangle(rectangle, minimumHeight, maximumHeight, ellipsoid);
         }
 
         let occludeePointInScaledSpace;
         if (hasRelativeToCenter) {
             const occluder = new EllipsoidalOccluder(ellipsoid);
-            occludeePointInScaledSpace = occluder.computeHorizonCullingPoint(relativeToCenter, positions);
+            occludeePointInScaledSpace = occluder.computeHorizonCullingPointPossiblyUnderEllipsoid(relativeToCenter, positions, minimumHeight);
         }
 
         const aaBox = new AxisAlignedBoundingBox(minimum, maximum, relativeToCenter);
-        const encoding = new TerrainEncoding(aaBox, hMin, maximumHeight, fromENU, false, includeWebMercatorT);
-        const vertices = new Float32Array(size * encoding.getStride());
+        const encoding = new TerrainEncoding(relativeToCenter, aaBox, hMin, maximumHeight, fromENU, false, includeWebMercatorT, includeGeodeticSurfaceNormals, exaggeration, exaggerationRelativeHeight);
+        const vertices = new Float32Array(vertexCount * encoding.stride);
 
         let bufferIndex = 0;
-        for (let j = 0; j < size; ++j) {
-            bufferIndex = encoding.encode(vertices, bufferIndex, positions[j], uvs[j], heights[j], undefined, webMercatorTs[j]);
+        for (let j = 0; j < vertexCount; ++j) {
+            bufferIndex = encoding.encode(vertices, bufferIndex, positions[j], uvs[j], heights[j], undefined, webMercatorTs[j], geodeticSurfaceNormals[j]);
         }
 
         return {

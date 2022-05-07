@@ -1,12 +1,47 @@
+import BoundingSphere from '@/Core/BoundingSphere';
+import Cartesian3 from '@/Core/Cartesian3';
+import Cartographic from '@/Core/Cartographic';
+import CesiumRay from '@/Core/CesiumRay';
+import { defaultValue } from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import Ellipsoid from '@/Core/Ellipsoid';
 import EllipsoidTerrainProvider from '@/Core/EllipsoidTerrainProvider';
 import Emit from '@/Core/Emit';
+import IntersectionTests from '@/Core/IntersectionTests';
 import { Object3DCollection } from '@/Core/Object3DCollection';
+import Rectangle from '@/Core/Rectangle';
+import { SceneMode } from '@/Core/SceneMode';
 import { FrameState } from './FrameState';
+import GlobeSurfaceTile from './GlobeSurfaceTile';
 import GlobeSurfaceTileProvider from './GlobeSurfaceTileProvider';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
+import MapScene from './MapScene';
 import QuadtreePrimitive from './QuadtreePrimitive';
+import QuadtreeTile from './QuadtreeTile';
+
+const scratchArray: any[] = [];
+const scratchSphereIntersectionResult = {
+    start: 0.0,
+    stop: 0.0,
+};
+
+const scratchGetHeightCartesian = new Cartesian3();
+const scratchGetHeightIntersection = new Cartesian3();
+const scratchGetHeightCartographic = new Cartographic();
+const scratchGetHeightRay = new CesiumRay();
+
+function tileIfContainsCartographic(tile: QuadtreeTile, cartographic: Cartographic) {
+    return defined(tile) && Rectangle.contains(tile.rectangle, cartographic) ? tile : undefined;
+}
+
+function createComparePickTileFunction(rayOrigin: Cartesian3) {
+    return function (a: GlobeSurfaceTile, b: GlobeSurfaceTile) {
+        const aDist = BoundingSphere.distanceSquaredTo(a.pickBoundingSphere, rayOrigin);
+        const bDist = BoundingSphere.distanceSquaredTo(b.pickBoundingSphere, rayOrigin);
+
+        return aDist - bDist;
+    };
+}
 
 class Globe extends Object3DCollection {
     _ellipsoid: Ellipsoid;
@@ -140,11 +175,11 @@ class Globe extends Object3DCollection {
         return this._terrainProviderChanged;
     }
 
-    render(frameState: FrameState): void {
-        if (!this.visible || frameState.camera.position.z < 0) {
-            return;
-        }
+    get ellipsoid(): Ellipsoid {
+        return this._ellipsoid;
+    }
 
+    render(frameState: FrameState): void {
         const surface = this._surface;
         const pass = frameState.passes;
 
@@ -197,6 +232,156 @@ class Globe extends Object3DCollection {
         if (frameState.passes.render) {
             this._surface.update(frameState);
         }
+    }
+
+    /**
+     * Get the height of the surface at a given cartographic.
+     *
+     * @param {Cartographic} cartographic The cartographic for which to find the height.
+     * @returns {Number|undefined} The height of the cartographic or undefined if it could not be found.
+     */
+    getHeight(cartographic: Cartographic): number | undefined {
+        const levelZeroTiles = this._surface._levelZeroTiles;
+        if (!defined(levelZeroTiles)) {
+            return;
+        }
+
+        let tile;
+        let i;
+
+        const length = levelZeroTiles.length;
+        for (i = 0; i < length; ++i) {
+            tile = levelZeroTiles[i];
+            if (Rectangle.contains(tile.rectangle, cartographic)) {
+                break;
+            }
+        }
+
+        if (i >= length) {
+            return undefined;
+        }
+
+        let tileWithMesh = tile;
+
+        while (defined(tile)) {
+            tile = tileIfContainsCartographic(tile._southwestChild, cartographic) || tileIfContainsCartographic(tile._southeastChild, cartographic) || tileIfContainsCartographic(tile._northwestChild, cartographic) || tile._northeastChild;
+
+            if (defined(tile) && defined(tile.data) && defined(tile.data.renderedMesh)) {
+                tileWithMesh = tile;
+            }
+        }
+
+        tile = tileWithMesh;
+
+        // This tile was either rendered or culled.
+        // It is sometimes useful to get a height from a culled tile,
+        // e.g. when we're getting a height in order to place a billboard
+        // on terrain, and the camera is looking at that same billboard.
+        // The culled tile must have a valid mesh, though.
+        if (!defined(tile) || !defined(tile.data) || !defined(tile.data.renderedMesh)) {
+            // Tile was not rendered (culled).
+            return undefined;
+        }
+
+        const projection = this._surface._tileProvider.tilingScheme.projection;
+        const ellipsoid = this._surface._tileProvider.tilingScheme.ellipsoid;
+
+        //cartesian has to be on the ellipsoid surface for `ellipsoid.geodeticSurfaceNormal`
+        const cartesian = Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0.0, ellipsoid, scratchGetHeightCartesian);
+
+        const ray = scratchGetHeightRay;
+        const surfaceNormal = ellipsoid.geodeticSurfaceNormal(cartesian, ray.direction) as Cartesian3;
+
+        // Try to find the intersection point between the surface normal and z-axis.
+        // minimum height (-11500.0) for the terrain set, need to get this information from the terrain provider
+        const rayOrigin = ellipsoid.getSurfaceNormalIntersectionWithZAxis(cartesian, 11500.0, ray.origin);
+
+        // Theoretically, not with Earth datums, the intersection point can be outside the ellipsoid
+        if (!defined(rayOrigin)) {
+            // intersection point is outside the ellipsoid, try other value
+            // minimum height (-11500.0) for the terrain set, need to get this information from the terrain provider
+            let minimumHeight;
+            if (defined(tile.data.tileBoundingRegion)) {
+                minimumHeight = tile.data.tileBoundingRegion.minimumHeight;
+            }
+            const magnitude = Math.min(defaultValue(minimumHeight, 0.0), -11500.0);
+
+            // multiply by the *positive* value of the magnitude
+            const vectorToMinimumPoint = Cartesian3.multiplyByScalar(surfaceNormal, Math.abs(magnitude) + 1, scratchGetHeightIntersection);
+            Cartesian3.subtract(cartesian, vectorToMinimumPoint, ray.origin);
+        }
+
+        const intersection = tile.data.pick(ray, undefined, projection, false, scratchGetHeightIntersection) as Cartesian3;
+        if (!defined(intersection)) {
+            return undefined;
+        }
+
+        return (ellipsoid as any).cartesianToCartographic(intersection, scratchGetHeightCartographic).height;
+    }
+
+    /**
+     * Find an intersection between a ray and the globe surface that was rendered. The ray must be given in world coordinates.
+     *
+     * @param {Ray} ray The ray to test for intersection.
+     * @param {Scene} scene The scene.
+     * @param {Boolean} [cullBackFaces=true] Set to true to not pick back faces.
+     * @param {Cartesian3} [result] The object onto which to store the result.
+     * @returns {Cartesian3|undefined} The intersection or <code>undefined</code> if none was found.  The returned position is in projected coordinates for 2D and Columbus View.
+     *
+     * @private
+     */
+    pickWorldCoordinates(ray: CesiumRay, scene: MapScene, cullBackFaces = true, result?: Cartesian3): Cartesian3 | undefined {
+        cullBackFaces = defaultValue(cullBackFaces, true);
+
+        const mode = scene.mode;
+        const projection = scene.mapProjection;
+
+        const sphereIntersections = scratchArray;
+        sphereIntersections.length = 0;
+
+        const tilesToRender = this._surface._tilesToRender;
+        let length = tilesToRender.length;
+
+        let tile;
+        let i;
+
+        for (i = 0; i < length; ++i) {
+            tile = tilesToRender[i];
+            const surfaceTile = tile.data;
+
+            if (!defined(surfaceTile)) {
+                continue;
+            }
+
+            let boundingVolume = surfaceTile.pickBoundingSphere;
+            if (mode !== SceneMode.SCENE3D) {
+                surfaceTile.pickBoundingSphere = boundingVolume = BoundingSphere.fromRectangleWithHeights2D(tile.rectangle, projection, surfaceTile.tileBoundingRegion.minimumHeight, surfaceTile.tileBoundingRegion.maximumHeight, boundingVolume);
+                Cartesian3.fromElements(boundingVolume.center.z, boundingVolume.center.x, boundingVolume.center.y, boundingVolume.center);
+            } else if (defined(surfaceTile.renderedMesh)) {
+                // BoundingSphere.clone(surfaceTile.tileBoundingRegion.boundingSphere, boundingVolume);
+            } else {
+                // So wait how did we render this thing then? It shouldn't be possible to get here.
+                continue;
+            }
+
+            const boundingSphereIntersection = IntersectionTests.raySphere(ray, boundingVolume, scratchSphereIntersectionResult);
+            if (defined(boundingSphereIntersection)) {
+                sphereIntersections.push(surfaceTile);
+            }
+        }
+
+        sphereIntersections.sort(createComparePickTileFunction(ray.origin));
+
+        let intersection;
+        length = sphereIntersections.length;
+        for (i = 0; i < length; ++i) {
+            intersection = sphereIntersections[i].pick(ray, scene.mode, scene.mapProjection, cullBackFaces, result);
+            if (defined(intersection)) {
+                break;
+            }
+        }
+
+        return intersection;
     }
 }
 

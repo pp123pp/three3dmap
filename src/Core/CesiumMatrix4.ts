@@ -2,6 +2,7 @@ import { Matrix4 } from 'three';
 import Cartesian3 from './Cartesian3';
 import Cartesian4 from './Cartesian4';
 import CesiumMatrix3 from './CesiumMatrix3';
+import { defaultValue } from './defaultValue';
 import defined from './defined';
 
 export default class CesiumMatrix4 extends Matrix4 {
@@ -11,7 +12,7 @@ export default class CesiumMatrix4 extends Matrix4 {
      * @type {Matrix4}
      * @constant
      */
-    static IDENTITY = Object.freeze(new CesiumMatrix4().set(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0));
+    static IDENTITY = Object.freeze(new CesiumMatrix4().fromArray([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
 
     /**
      * Retrieves a copy of the matrix column at the provided index as a Cartesian4 instance.
@@ -598,5 +599,175 @@ export default class CesiumMatrix4 extends Matrix4 {
                 left.elements[11] === right.elements[11] &&
                 left.elements[15] === right.elements[15])
         );
+    }
+
+    /**
+     * Computes a Matrix4 instance that transforms from normalized device coordinates to window coordinates.
+     *
+     * @param {Object} [viewport = { x : 0.0, y : 0.0, width : 0.0, height : 0.0 }] The viewport's corners as shown in Example 1.
+     * @param {Number} [nearDepthRange=0.0] The near plane distance in window coordinates.
+     * @param {Number} [farDepthRange=1.0] The far plane distance in window coordinates.
+     * @param {Matrix4} [result] The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     *
+     * @example
+     * // Create viewport transformation using an explicit viewport and depth range.
+     * const m = Cesium.Matrix4.computeViewportTransformation({
+     *     x : 0.0,
+     *     y : 0.0,
+     *     width : 1024.0,
+     *     height : 768.0
+     * }, 0.0, 1.0, new Cesium.Matrix4());
+     */
+    static computeViewportTransformation(viewport: any, nearDepthRange = 0.0, farDepthRange = 1.0, result = new CesiumMatrix4()): CesiumMatrix4 {
+        viewport = defaultValue(viewport, defaultValue.EMPTY_OBJECT);
+        const x = defaultValue(viewport.x, 0.0);
+        const y = defaultValue(viewport.y, 0.0);
+        const width = defaultValue(viewport.width, 0.0);
+        const height = defaultValue(viewport.height, 0.0);
+        nearDepthRange = defaultValue(nearDepthRange, 0.0);
+        farDepthRange = defaultValue(farDepthRange, 1.0);
+
+        const halfWidth = width * 0.5;
+        const halfHeight = height * 0.5;
+        const halfDepth = (farDepthRange - nearDepthRange) * 0.5;
+
+        const column0Row0 = halfWidth;
+        const column1Row1 = halfHeight;
+        const column2Row2 = halfDepth;
+        const column3Row0 = x + halfWidth;
+        const column3Row1 = y + halfHeight;
+        const column3Row2 = nearDepthRange + halfDepth;
+        const column3Row3 = 1.0;
+
+        const elements = result.elements;
+        elements[0] = column0Row0;
+        elements[1] = 0.0;
+        elements[2] = 0.0;
+        elements[3] = 0.0;
+        elements[4] = 0.0;
+        elements[5] = column1Row1;
+        elements[6] = 0.0;
+        elements[7] = 0.0;
+        elements[8] = 0.0;
+        elements[9] = 0.0;
+        elements[10] = column2Row2;
+        elements[11] = 0.0;
+        elements[12] = column3Row0;
+        elements[13] = column3Row1;
+        elements[14] = column3Row2;
+        elements[15] = column3Row3;
+
+        return result;
+    }
+
+    /**
+     * Computes the product of a matrix and a column vector.
+     *
+     * @param {Matrix4} matrix The matrix.
+     * @param {Cartesian4} cartesian The vector.
+     * @param {Cartesian4} result The object onto which to store the result.
+     * @returns {Cartesian4} The modified result parameter.
+     */
+    static multiplyByVector(matrix: CesiumMatrix4, cartesian: Cartesian4, result: Cartesian4): Cartesian4 {
+        const vX = cartesian.x;
+        const vY = cartesian.y;
+        const vZ = cartesian.z;
+        const vW = cartesian.w;
+
+        const elements = matrix.elements;
+        const x = elements[0] * vX + elements[4] * vY + elements[8] * vZ + elements[12] * vW;
+        const y = elements[1] * vX + elements[5] * vY + elements[9] * vZ + elements[13] * vW;
+        const z = elements[2] * vX + elements[6] * vY + elements[10] * vZ + elements[14] * vW;
+        const w = elements[3] * vX + elements[7] * vY + elements[11] * vZ + elements[15] * vW;
+
+        result.x = x;
+        result.y = y;
+        result.z = z;
+        result.w = w;
+        return result;
+    }
+
+    /**
+     * Computes a Matrix4 instance representing an off center perspective transformation.
+     *
+     * @param {Number} left The number of meters to the left of the camera that will be in view.
+     * @param {Number} right The number of meters to the right of the camera that will be in view.
+     * @param {Number} bottom The number of meters below of the camera that will be in view.
+     * @param {Number} top The number of meters above of the camera that will be in view.
+     * @param {Number} near The distance to the near plane in meters.
+     * @param {Number} far The distance to the far plane in meters.
+     * @param {Matrix4} result The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     */
+    static computePerspectiveOffCenter(left: number, right: number, bottom: number, top: number, near: number, far: number, result: CesiumMatrix4): CesiumMatrix4 {
+        const column0Row0 = (2.0 * near) / (right - left);
+        const column1Row1 = (2.0 * near) / (top - bottom);
+        const column2Row0 = (right + left) / (right - left);
+        const column2Row1 = (top + bottom) / (top - bottom);
+        const column2Row2 = -(far + near) / (far - near);
+        const column2Row3 = -1.0;
+        const column3Row2 = (-2.0 * far * near) / (far - near);
+
+        const elements = result.elements;
+
+        elements[0] = column0Row0;
+        elements[1] = 0.0;
+        elements[2] = 0.0;
+        elements[3] = 0.0;
+        elements[4] = 0.0;
+        elements[5] = column1Row1;
+        elements[6] = 0.0;
+        elements[7] = 0.0;
+        elements[8] = column2Row0;
+        elements[9] = column2Row1;
+        elements[10] = column2Row2;
+        elements[11] = column2Row3;
+        elements[12] = 0.0;
+        elements[13] = 0.0;
+        elements[14] = column3Row2;
+        elements[15] = 0.0;
+        return result;
+    }
+
+    /**
+     * Computes a Matrix4 instance representing an infinite off center perspective transformation.
+     *
+     * @param {Number} left The number of meters to the left of the camera that will be in view.
+     * @param {Number} right The number of meters to the right of the camera that will be in view.
+     * @param {Number} bottom The number of meters below of the camera that will be in view.
+     * @param {Number} top The number of meters above of the camera that will be in view.
+     * @param {Number} near The distance to the near plane in meters.
+     * @param {Matrix4} result The object in which the result will be stored.
+     * @returns {Matrix4} The modified result parameter.
+     */
+    static computeInfinitePerspectiveOffCenter(left: number, right: number, bottom: number, top: number, near: number, result: CesiumMatrix4): CesiumMatrix4 {
+        const column0Row0 = (2.0 * near) / (right - left);
+        const column1Row1 = (2.0 * near) / (top - bottom);
+        const column2Row0 = (right + left) / (right - left);
+        const column2Row1 = (top + bottom) / (top - bottom);
+        const column2Row2 = -1.0;
+        const column2Row3 = -1.0;
+        const column3Row2 = -2.0 * near;
+
+        const elements = result.elements;
+
+        elements[0] = column0Row0;
+        elements[1] = 0.0;
+        elements[2] = 0.0;
+        elements[3] = 0.0;
+        elements[4] = 0.0;
+        elements[5] = column1Row1;
+        elements[6] = 0.0;
+        elements[7] = 0.0;
+        elements[8] = column2Row0;
+        elements[9] = column2Row1;
+        elements[10] = column2Row2;
+        elements[11] = column2Row3;
+        elements[12] = 0.0;
+        elements[13] = 0.0;
+        elements[14] = column3Row2;
+        elements[15] = 0.0;
+        return result;
     }
 }

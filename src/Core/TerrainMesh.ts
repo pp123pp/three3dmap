@@ -85,94 +85,35 @@ export default class TerrainMesh {
      */
     encoding: TerrainEncoding;
 
-    exaggeration: number;
+    /**
+     * The indices of the vertices on the Western edge of the tile, ordered from South to North (clockwise).
+     * @type {Number[]}
+     */
+    westIndicesSouthToNorth: number[];
 
-    // /**
-    //  * The indices of the vertices on the Western edge of the tile, ordered from South to North (clockwise).
-    //  * @type {Number[]}
-    //  */
-    // westIndicesSouthToNorth: number[];
+    /**
+     * The indices of the vertices on the Southern edge of the tile, ordered from East to West (clockwise).
+     * @type {Number[]}
+     */
+    southIndicesEastToWest: number[];
 
-    // /**
-    //  * The indices of the vertices on the Southern edge of the tile, ordered from East to West (clockwise).
-    //  * @type {Number[]}
-    //  */
-    // southIndicesEastToWest: number[];
+    /**
+     * The indices of the vertices on the Eastern edge of the tile, ordered from North to South (clockwise).
+     * @type {Number[]}
+     */
+    eastIndicesNorthToSouth: number[];
 
-    // /**
-    //  * The indices of the vertices on the Eastern edge of the tile, ordered from North to South (clockwise).
-    //  * @type {Number[]}
-    //  */
-    // eastIndicesNorthToSouth: number[];
+    /**
+     * The indices of the vertices on the Northern edge of the tile, ordered from West to East (clockwise).
+     * @type {Number[]}
+     */
+    northIndicesWestToEast: number[];
 
-    // /**
-    //  * The indices of the vertices on the Northern edge of the tile, ordered from West to East (clockwise).
-    //  * @type {Number[]}
-    //  */
-    // northIndicesWestToEast: number[];
+    indexCountWithoutSkirts: any;
 
-    constructor(
-        // center: Cartesian3,
-        // vertices: Float32Array,
-        // indices: Uint8Array | Uint16Array | Uint32Array,
-        // indexCountWithoutSkirts: number,
-        // vertexCountWithoutSkirts: number,
-        // minimumHeight: number,
-        // maximumHeight: number,
-        // boundingSphere3D: BoundingSphere,
-        // occludeePointInScaledSpace: Cartesian3,
-        // vertexStride = 6,
-        // orientedBoundingBox?: OrientedBoundingBox,
-        // encoding?: TerrainEncoding,
-        // westIndicesSouthToNorth: number[] = [],
-        // southIndicesEastToWest: number[] = [],
-        // eastIndicesNorthToSouth: number[] = [],
-        // northIndicesWestToEast: number[] = []
+    vertexCountWithoutSkirts: any;
 
-        center: any,
-        vertices: any,
-        indices: any,
-        minimumHeight: any,
-        maximumHeight: any,
-        boundingSphere3D: any,
-        occludeePointInScaledSpace: any,
-        vertexStride: any,
-        orientedBoundingBox: any,
-        encoding: any,
-        exaggeration: any
-    ) {
-        // this.center = center;
-
-        // this.vertices = vertices;
-
-        // this.stride = defaultValue(vertexStride, 6);
-
-        // this.indices = indices;
-
-        // this.indexCountWithoutSkirts = indexCountWithoutSkirts;
-
-        // this.vertexCountWithoutSkirts = vertexCountWithoutSkirts;
-
-        // this.minimumHeight = minimumHeight;
-
-        // this.maximumHeight = maximumHeight;
-
-        // this.boundingSphere3D = boundingSphere3D;
-
-        // this.occludeePointInScaledSpace = occludeePointInScaledSpace;
-
-        // this.orientedBoundingBox = orientedBoundingBox as OrientedBoundingBox;
-
-        // this.encoding = encoding as TerrainEncoding;
-
-        // this.westIndicesSouthToNorth = westIndicesSouthToNorth;
-
-        // this.southIndicesEastToWest = southIndicesEastToWest;
-
-        // this.eastIndicesNorthToSouth = eastIndicesNorthToSouth;
-
-        // this.northIndicesWestToEast = northIndicesWestToEast;
-
+    constructor(center: any, vertices: any, indices: any, indexCountWithoutSkirts: any, vertexCountWithoutSkirts: any, minimumHeight: any, maximumHeight: any, boundingSphere3D: any, occludeePointInScaledSpace: any, vertexStride: any, orientedBoundingBox: any, encoding: any, westIndicesSouthToNorth: any, southIndicesEastToWest: any, eastIndicesNorthToSouth: any, northIndicesWestToEast: any) {
         /**
          * The center of the tile.  Vertex positions are specified relative to this center.
          * @type {Cartesian3}
@@ -199,9 +140,21 @@ export default class TerrainMesh {
 
         /**
          * The indices describing how the vertices are connected to form triangles.
-         * @type {Uint16Array|Uint32Array}
+         * @type {Uint8Array|Uint16Array|Uint32Array}
          */
         this.indices = indices;
+
+        /**
+         * The index count of the mesh not including skirts.
+         * @type {Number}
+         */
+        this.indexCountWithoutSkirts = indexCountWithoutSkirts;
+
+        /**
+         * The vertex count of the mesh not including skirts.
+         * @type {Number}
+         */
+        this.vertexCountWithoutSkirts = vertexCountWithoutSkirts;
 
         /**
          * The lowest height in the tile, in meters above the ellipsoid.
@@ -242,9 +195,27 @@ export default class TerrainMesh {
         this.encoding = encoding;
 
         /**
-         * The amount that this mesh was exaggerated.
-         * @type {Number}
+         * The indices of the vertices on the Western edge of the tile, ordered from South to North (clockwise).
+         * @type {Number[]}
          */
-        this.exaggeration = exaggeration;
+        this.westIndicesSouthToNorth = westIndicesSouthToNorth;
+
+        /**
+         * The indices of the vertices on the Southern edge of the tile, ordered from East to West (clockwise).
+         * @type {Number[]}
+         */
+        this.southIndicesEastToWest = southIndicesEastToWest;
+
+        /**
+         * The indices of the vertices on the Eastern edge of the tile, ordered from North to South (clockwise).
+         * @type {Number[]}
+         */
+        this.eastIndicesNorthToSouth = eastIndicesNorthToSouth;
+
+        /**
+         * The indices of the vertices on the Northern edge of the tile, ordered from West to East (clockwise).
+         * @type {Number[]}
+         */
+        this.northIndicesWestToEast = northIndicesWestToEast;
     }
 }

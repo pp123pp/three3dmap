@@ -54,10 +54,10 @@ const attributesIndicesBits12 = {
  */
 export default class TerrainEncoding {
     quantization: TerrainQuantization;
-    minimumHeight?: number;
-    maximumHeight?: number;
-    center?: Cartesian3;
-    toScaledENU?: CesiumMatrix4;
+    minimumHeight: number;
+    maximumHeight: number;
+    center: Cartesian3;
+    toScaledENU: CesiumMatrix4;
     fromScaledENU?: CesiumMatrix4;
     matrix: CesiumMatrix4;
     hasVertexNormals: boolean;
@@ -74,18 +74,17 @@ export default class TerrainEncoding {
     _offsetGeodeticSurfaceNormal = 0;
     _offsetVertexNormal = 0;
     _threeMatrix4 = new CesiumMatrix4();
-    constructor(axisAlignedBoundingBox?: AxisAlignedBoundingBox, minimumHeight?: number, maximumHeight?: number, fromENU?: CesiumMatrix4, hasVertexNormals?: boolean, hasWebMercatorT = false, hasGeodeticSurfaceNormals = false, exaggeration = 1.0, exaggerationRelativeHeight = 0.0) {
+    constructor(center: Cartesian3, axisAlignedBoundingBox: AxisAlignedBoundingBox, minimumHeight: number, maximumHeight: number, fromENU: CesiumMatrix4, hasVertexNormals: boolean, hasWebMercatorT = false, hasGeodeticSurfaceNormals = false, exaggeration = 1.0, exaggerationRelativeHeight = 0.0) {
         let quantization = TerrainQuantization.NONE;
         let toENU;
         let matrix;
-        let center;
 
         if (defined(axisAlignedBoundingBox) && defined(minimumHeight) && defined(maximumHeight) && defined(fromENU)) {
             const minimum = (axisAlignedBoundingBox as AxisAlignedBoundingBox).minimum;
             const maximum = (axisAlignedBoundingBox as AxisAlignedBoundingBox).maximum;
 
             const dimensions = Cartesian3.subtract(maximum, minimum, cartesian3DimScratch);
-            const hDim = (maximumHeight as number) - (minimumHeight as number);
+            const hDim = maximumHeight - minimumHeight;
             const maxDim = Math.max(Cartesian3.maximumComponent(dimensions), hDim);
 
             if (maxDim < SHIFT_LEFT_12 - 1.0) {
@@ -94,8 +93,7 @@ export default class TerrainEncoding {
                 quantization = TerrainQuantization.NONE;
             }
 
-            center = (axisAlignedBoundingBox as AxisAlignedBoundingBox).center;
-            toENU = CesiumMatrix4.inverseTransformation(fromENU as CesiumMatrix4, new CesiumMatrix4());
+            toENU = CesiumMatrix4.inverseTransformation(fromENU, new CesiumMatrix4());
 
             const translation = Cartesian3.negate(minimum, cartesian3Scratch);
             CesiumMatrix4.multiply(CesiumMatrix4.fromTranslation(translation, matrix4Scratch), toENU, toENU);
@@ -106,10 +104,10 @@ export default class TerrainEncoding {
             scale.z = 1.0 / dimensions.z;
             CesiumMatrix4.multiply(CesiumMatrix4.fromScale(scale, matrix4Scratch), toENU, toENU);
 
-            matrix = CesiumMatrix4.clone(fromENU as CesiumMatrix4);
+            matrix = CesiumMatrix4.clone(fromENU);
             CesiumMatrix4.setTranslation(matrix, Cartesian3.ZERO, matrix);
 
-            fromENU = CesiumMatrix4.clone(fromENU as CesiumMatrix4, new CesiumMatrix4()) as CesiumMatrix4;
+            fromENU = CesiumMatrix4.clone(fromENU, new CesiumMatrix4());
 
             const translationMatrix = CesiumMatrix4.fromTranslation(minimum, matrix4Scratch);
             const scaleMatrix = CesiumMatrix4.fromScale(dimensions, matrix4Scratch2);
@@ -129,19 +127,19 @@ export default class TerrainEncoding {
          * The minimum height of the tile including the skirts.
          * @type {Number}
          */
-        this.minimumHeight = minimumHeight;
+        this.minimumHeight = minimumHeight as number;
 
         /**
          * The maximum height of the tile.
          * @type {Number}
          */
-        this.maximumHeight = maximumHeight;
+        this.maximumHeight = maximumHeight as number;
 
         /**
          * The center of the tile.
          * @type {Cartesian3}
          */
-        this.center = Cartesian3.clone(center as Cartesian3) as Cartesian3;
+        this.center = Cartesian3.clone(center);
 
         /**
          * A matrix that takes a vertex from the tile, transforms it to east-north-up at the center and scales
@@ -166,7 +164,7 @@ export default class TerrainEncoding {
          * The terrain mesh contains normals.
          * @type {Boolean}
          */
-        this.hasVertexNormals = hasVertexNormals as boolean;
+        this.hasVertexNormals = hasVertexNormals;
 
         /**
          * The terrain mesh contains a vertical texture coordinate following the Web Mercator projection.
@@ -191,6 +189,12 @@ export default class TerrainEncoding {
          */
         this.exaggerationRelativeHeight = defaultValue(exaggerationRelativeHeight, 0.0);
 
+        /**
+         * The number of components in each vertex. This value can differ with different quantizations.
+         * @type {Number}
+         */
+        this.stride = 0;
+
         this._offsetGeodeticSurfaceNormal = 0;
         this._offsetVertexNormal = 0;
 
@@ -205,19 +209,19 @@ export default class TerrainEncoding {
     //     return CesiumMatrix4.transformToThreeMatrix4(this.matrix, this._threeMatrix4);
     // }
 
-    encode(vertexBuffer: any, bufferIndex: any, position: any, uv: any, height: any, normalToPack: any, webMercatorT: any, geodeticSurfaceNormal?: any) {
+    encode(vertexBuffer: any, bufferIndex: number, position: Cartesian3, uv: Cartesian2, height: number, normalToPack: any, webMercatorT: any, geodeticSurfaceNormal?: any) {
         const u = uv.x;
         const v = uv.y;
 
         if (this.quantization === TerrainQuantization.BITS12) {
-            position = CesiumMatrix4.multiplyByPoint(this.toScaledENU as CesiumMatrix4, position, cartesian3Scratch);
+            position = CesiumMatrix4.multiplyByPoint(this.toScaledENU, position, cartesian3Scratch);
 
             position.x = CesiumMath.clamp(position.x, 0.0, 1.0);
             position.y = CesiumMath.clamp(position.y, 0.0, 1.0);
             position.z = CesiumMath.clamp(position.z, 0.0, 1.0);
 
-            const hDim = (this.maximumHeight as number) - (this.minimumHeight as number);
-            const h = CesiumMath.clamp((height - (this.minimumHeight as number)) / hDim, 0.0, 1.0);
+            const hDim = this.maximumHeight - this.minimumHeight;
+            const h = CesiumMath.clamp((height - this.minimumHeight) / hDim, 0.0, 1.0);
 
             Cartesian2.fromElements(position.x, position.y, cartesian2Scratch);
             const compressed0 = AttributeCompression.compressTextureCoordinates(cartesian2Scratch);
@@ -238,7 +242,7 @@ export default class TerrainEncoding {
                 vertexBuffer[bufferIndex++] = compressed3;
             }
         } else {
-            Cartesian3.subtract(position, this.center as Cartesian3, cartesian3Scratch);
+            Cartesian3.subtract(position, this.center, cartesian3Scratch);
 
             vertexBuffer[bufferIndex++] = cartesian3Scratch.x;
             vertexBuffer[bufferIndex++] = cartesian3Scratch.y;
@@ -312,7 +316,7 @@ export default class TerrainEncoding {
         }
     }
 
-    decodePosition(buffer: any, index: number, result: Cartesian3): Cartesian3 {
+    decodePosition(buffer: Float32Array, index: number, result: Cartesian3): Cartesian3 {
         if (!defined(result)) {
             result = new Cartesian3();
         }
@@ -333,10 +337,10 @@ export default class TerrainEncoding {
         result.x = buffer[index];
         result.y = buffer[index + 1];
         result.z = buffer[index + 2];
-        return Cartesian3.add(result, this.center as Cartesian3, result);
+        return Cartesian3.add(result, this.center, result);
     }
 
-    getExaggeratedPosition(buffer: ArrayBuffer, index: number, result: Cartesian3): Cartesian3 {
+    getExaggeratedPosition(buffer: Float32Array, index: number, result: Cartesian3): Cartesian3 {
         result = this.decodePosition(buffer, index, result);
 
         const exaggeration = this.exaggeration;
@@ -356,11 +360,7 @@ export default class TerrainEncoding {
         return result;
     }
 
-    decodeTextureCoordinates(buffer: any, index: any, result: any) {
-        if (!defined(result)) {
-            result = new Cartesian2();
-        }
-
+    decodeTextureCoordinates(buffer: any, index: number, result = new Cartesian2()): Cartesian2 {
         index *= this.stride;
 
         if (this.quantization === TerrainQuantization.BITS12) {
@@ -370,18 +370,18 @@ export default class TerrainEncoding {
         return Cartesian2.fromElements(buffer[index + 4], buffer[index + 5], result);
     }
 
-    decodeHeight(buffer: any, index: any) {
+    decodeHeight(buffer: any, index: any): number {
         index *= this.stride;
 
         if (this.quantization === TerrainQuantization.BITS12) {
             const zh = AttributeCompression.decompressTextureCoordinates(buffer[index + 1], cartesian2Scratch);
-            return zh.y * ((this.maximumHeight as number) - (this.minimumHeight as number)) + (this.minimumHeight as number);
+            return zh.y * (this.maximumHeight - this.minimumHeight) + this.minimumHeight;
         }
 
         return buffer[index + 3];
     }
 
-    decodeWebMercatorT(buffer: any, index: any) {
+    decodeWebMercatorT(buffer: any, index: any): number {
         index *= this.stride;
 
         if (this.quantization === TerrainQuantization.BITS12) {
@@ -441,7 +441,7 @@ export default class TerrainEncoding {
         const strideInBytes = this.stride * sizeInBytes;
         let offsetInBytes = 0;
 
-        const attributes: any = [];
+        const attributes: any[] = [];
         function addAttribute(index: any, componentsPerAttribute: any) {
             attributes.push({
                 index: index,
@@ -514,7 +514,7 @@ export default class TerrainEncoding {
         return vertexStride;
     }
 
-    static clone(encoding: any, result = new TerrainEncoding()): TerrainEncoding | undefined {
+    static clone(encoding: any, result = new (TerrainEncoding as any)()): TerrainEncoding | undefined {
         if (!defined(encoding)) {
             return undefined;
         }
