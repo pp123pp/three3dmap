@@ -1,5 +1,6 @@
 import { AxesHelper } from 'three';
 import Cartesian3 from './Core/Cartesian3';
+import CesiumMatrix4 from './Core/CesiumMatrix4';
 // import TileCoordinatesImageryProvider from './Scene/TileCoordinatesImageryProvider';
 import './Widgets/CesiumWidget.css';
 import Widgets from './Widgets/Widgets';
@@ -22,3 +23,5 @@ scene.addObject(axesHelper);
 // camera.setView({
 //     destination: ps,
 // });
+
+console.log(new CesiumMatrix4());

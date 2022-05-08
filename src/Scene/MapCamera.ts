@@ -244,7 +244,7 @@ export default class MapCamera {
 
         this.scene = scene;
 
-        this._mode = scene.mode;
+        this._mode = SceneMode.SCENE3D;
 
         const projection = scene.mapProjection;
         this._projection = projection;
@@ -259,7 +259,7 @@ export default class MapCamera {
         Cartesian3.multiplyByScalar(this.position, mag, this.position);
     }
 
-    static TRANSFORM_2D = new CesiumMatrix4().fromArray([0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1]);
+    static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 
     /**
      * The default rectangle the camera will view on creation.
@@ -1167,6 +1167,7 @@ function updateMembers(camera: MapCamera) {
     camera._transformChanged = false;
 
     if (transformChanged) {
+        CesiumMatrix4.inverseTransformation(camera._transform, camera._invTransform);
         if (camera._mode === SceneMode.COLUMBUS_VIEW || camera._mode === SceneMode.SCENE2D) {
             if (CesiumMatrix4.equals(CesiumMatrix4.IDENTITY, camera._transform)) {
                 CesiumMatrix4.clone(MapCamera.TRANSFORM_2D, camera._actualTransform);

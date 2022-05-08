@@ -12,7 +12,7 @@ export default class CesiumMatrix4 extends Matrix4 {
      * @type {Matrix4}
      * @constant
      */
-    static IDENTITY = Object.freeze(new CesiumMatrix4().fromArray([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]));
+    static IDENTITY = Object.freeze(new CesiumMatrix4());
 
     /**
      * Retrieves a copy of the matrix column at the provided index as a Cartesian4 instance.
@@ -280,11 +280,7 @@ export default class CesiumMatrix4 extends Matrix4 {
      * //   [0.0, 0.0, 0.0, 1.0]
      * var m = Cesium.Matrix4.fromScale(new Cesium.Cartesian3(7.0, 8.0, 9.0));
      */
-    static fromScale(scale: Cartesian3, result: CesiumMatrix4): CesiumMatrix4 {
-        if (!defined(result)) {
-            return new Matrix4().set(scale.x, 0.0, 0.0, 0.0, 0.0, scale.y, 0.0, 0.0, 0.0, 0.0, scale.z, 0.0, 0.0, 0.0, 0.0, 1.0);
-        }
-
+    static fromScale(scale: Cartesian3, result = new CesiumMatrix4()): CesiumMatrix4 {
         result.elements[0] = scale.x;
         result.elements[1] = 0.0;
         result.elements[2] = 0.0;
