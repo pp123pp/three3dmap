@@ -50,11 +50,7 @@ export default class Cartesian4 extends Vector4 {
      * @param {Cartesian4} [result] The object onto which to store the result.
      * @returns {Cartesian4} The modified result parameter or a new Cartesian4 instance if one was not provided. (Returns undefined if cartesian is undefined)
      */
-    static clone(cartesian: Cartesian4, result?: Cartesian4): Cartesian4 | undefined {
-        if (!defined(cartesian)) {
-            return undefined;
-        }
-
+    static clone(cartesian: Cartesian4, result?: Cartesian4): Cartesian4 {
         if (!defined(result)) {
             return new Cartesian4(cartesian.x, cartesian.y, cartesian.z, cartesian.w);
         }

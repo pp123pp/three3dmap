@@ -9,6 +9,7 @@ import { Clock, WebGLRendererParameters } from 'three';
 import getElement from './getElement';
 import './../Extension/Object3DExtension';
 import MapCamera from '@/Scene/MapCamera';
+import { SceneMode } from '@/Core/SceneMode';
 
 function startRenderLoop(widget: Widgets) {
     widget._renderLoopRunning = true;
@@ -83,6 +84,7 @@ export default class Widgets {
             useBrowserRecommendedResolution?: true;
             useDefaultRenderLoop?: true;
             targetFrameRate?: number;
+            sceneMode?: SceneMode;
             // globe?: Globe;
         }
     ) {
@@ -134,9 +136,19 @@ export default class Widgets {
             renderState: combineRenderState,
             enabledEffect: options?.enabledEffect,
             requestRenderMode: options?.requestRenderMode,
+            sceneMode: options?.sceneMode,
         });
 
         this.screenSpaceEventHandler = new ScreenSpaceEventHandler(canvas);
+
+        if (defined(options.sceneMode)) {
+            if (options.sceneMode === SceneMode.SCENE2D) {
+                // this.scene.morphTo2D(0);
+            }
+            if (options.sceneMode === SceneMode.COLUMBUS_VIEW) {
+                this.scene.morphToColumbusView(0);
+            }
+        }
 
         this.useDefaultRenderLoop = defaultValue(options.useDefaultRenderLoop, true) as boolean;
     }

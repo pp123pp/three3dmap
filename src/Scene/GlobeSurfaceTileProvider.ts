@@ -27,6 +27,7 @@ import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
+import TerrainFillMesh from './TerrainFillMesh';
 import TileSelectionResult from './TileSelectionResult';
 
 interface IGlobeSurfaceTileProviderParameter {
@@ -174,10 +175,21 @@ let debugDestroyPrimitive: any;
 const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
     const surfaceTile = tile.data;
 
+    if (!defined(surfaceTile.vertexArray)) {
+        if (surfaceTile.fill === undefined) {
+            // No fill was created for this tile, probably because this tile is not connected to
+            // any renderable tiles. So create a simple tile in the middle of the tile's possible
+            // height range.
+            surfaceTile.fill = new TerrainFillMesh(tile);
+        }
+        surfaceTile.fill.update(tileProvider, frameState);
+    }
+
     let rtc = surfaceTile.center;
     // const encoding = surfaceTile.pickTerrain.mesh.encoding;
 
-    const encoding = surfaceTile.mesh.encoding;
+    // const encoding = surfaceTile.mesh.encoding;
+    const encoding = surfaceTile.renderedMesh.encoding;
 
     // Not used in 3D.
     const tileRectangle = tileRectangleScratch;
@@ -305,7 +317,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         uniformMap.scaleAndBias = encoding.matrix;
 
         // debugger;
-        command.geometry = surfaceTile.mesh.geometry;
+        command.geometry = surfaceTile.renderedMesh.geometry;
         command.material = uniformMap;
 
         let boundingVolume = command.boundingVolume;

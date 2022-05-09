@@ -28,6 +28,78 @@ export default class CesiumMatrix3 extends Matrix3 {
     static packedLength = 9;
 
     /**
+     * The index into Matrix3 for column 0, row 0.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN0ROW0 = 0;
+
+    /**
+     * The index into Matrix3 for column 0, row 1.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN0ROW1 = 1;
+
+    /**
+     * The index into Matrix3 for column 0, row 2.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN0ROW2 = 2;
+
+    /**
+     * The index into Matrix3 for column 1, row 0.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN1ROW0 = 3;
+
+    /**
+     * The index into Matrix3 for column 1, row 1.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN1ROW1 = 4;
+
+    /**
+     * The index into Matrix3 for column 1, row 2.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN1ROW2 = 5;
+
+    /**
+     * The index into Matrix3 for column 2, row 0.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN2ROW0 = 6;
+
+    /**
+     * The index into Matrix3 for column 2, row 1.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN2ROW1 = 7;
+
+    /**
+     * The index into Matrix3 for column 2, row 2.
+     *
+     * @type {Number}
+     * @constant
+     */
+    static COLUMN2ROW2 = 8;
+
+    /**
      * Computes a new matrix that replaces the specified column in the provided matrix with the provided Cartesian3 instance.
      *
      * @param {Matrix3} matrix The matrix to use.
@@ -232,6 +304,104 @@ export default class CesiumMatrix3 extends Matrix3 {
         result.elements[6] = m02;
         result.elements[7] = m12;
         result.elements[8] = m22;
+        return result;
+    }
+
+    /**
+     * Computes a Matrix3 instance representing a non-uniform scale.
+     *
+     * @param {Cartesian3} scale The x, y, and z scale factors.
+     * @param {Matrix3} [result] The object in which the result will be stored, if undefined a new instance will be created.
+     * @returns {Matrix3} The modified result parameter, or a new Matrix3 instance if one was not provided.
+     *
+     * @example
+     * // Creates
+     * //   [7.0, 0.0, 0.0]
+     * //   [0.0, 8.0, 0.0]
+     * //   [0.0, 0.0, 9.0]
+     * const m = Cesium.Matrix3.fromScale(new Cesium.Cartesian3(7.0, 8.0, 9.0));
+     */
+    static fromScale(scale: Cartesian3, result = new CesiumMatrix3()): CesiumMatrix3 {
+        const elements = result.elements;
+        elements[0] = scale.x;
+        elements[1] = 0.0;
+        elements[2] = 0.0;
+        elements[3] = 0.0;
+        elements[4] = scale.y;
+        elements[5] = 0.0;
+        elements[6] = 0.0;
+        elements[7] = 0.0;
+        elements[8] = scale.z;
+        return result;
+    }
+
+    /**
+     * Computes the product of two matrices.
+     *
+     * @param {Matrix3} left The first matrix.
+     * @param {Matrix3} right The second matrix.
+     * @param {Matrix3} result The object onto which to store the result.
+     * @returns {Matrix3} The modified result parameter.
+     */
+    static multiply(left: CesiumMatrix3, right: CesiumMatrix3, result: CesiumMatrix3): CesiumMatrix3 {
+        const leftElements = left.elements;
+        const rightElements = right.elements;
+        const column0Row0 = leftElements[0] * rightElements[0] + leftElements[3] * rightElements[1] + leftElements[6] * rightElements[2];
+        const column0Row1 = leftElements[1] * rightElements[0] + leftElements[4] * rightElements[1] + leftElements[7] * rightElements[2];
+        const column0Row2 = leftElements[2] * rightElements[0] + leftElements[5] * rightElements[1] + leftElements[8] * rightElements[2];
+
+        const column1Row0 = leftElements[0] * rightElements[3] + leftElements[3] * rightElements[4] + leftElements[6] * rightElements[5];
+        const column1Row1 = leftElements[1] * rightElements[3] + leftElements[4] * rightElements[4] + leftElements[7] * rightElements[5];
+        const column1Row2 = leftElements[2] * rightElements[3] + leftElements[5] * rightElements[4] + leftElements[8] * rightElements[5];
+
+        const column2Row0 = leftElements[0] * rightElements[6] + leftElements[3] * rightElements[7] + leftElements[6] * rightElements[8];
+        const column2Row1 = leftElements[1] * rightElements[6] + leftElements[4] * rightElements[7] + leftElements[7] * rightElements[8];
+        const column2Row2 = leftElements[2] * rightElements[6] + leftElements[5] * rightElements[7] + leftElements[8] * rightElements[8];
+
+        const elements = result.elements;
+
+        elements[0] = column0Row0;
+        elements[1] = column0Row1;
+        elements[2] = column0Row2;
+        elements[3] = column1Row0;
+        elements[4] = column1Row1;
+        elements[5] = column1Row2;
+        elements[6] = column2Row0;
+        elements[7] = column2Row1;
+        elements[8] = column2Row2;
+        return result;
+    }
+
+    /**
+     * Computes the transpose of the provided matrix.
+     *
+     * @param {Matrix3} matrix The matrix to transpose.
+     * @param {Matrix3} result The object onto which to store the result.
+     * @returns {Matrix3} The modified result parameter.
+     */
+    static transpose(matrix: CesiumMatrix3, result: CesiumMatrix3): CesiumMatrix3 {
+        const matElements = matrix.elements;
+        const column0Row0 = matElements[0];
+        const column0Row1 = matElements[3];
+        const column0Row2 = matElements[6];
+        const column1Row0 = matElements[1];
+        const column1Row1 = matElements[4];
+        const column1Row2 = matElements[7];
+        const column2Row0 = matElements[2];
+        const column2Row1 = matElements[5];
+        const column2Row2 = matElements[8];
+
+        const elements = result.elements;
+
+        elements[0] = column0Row0;
+        elements[1] = column0Row1;
+        elements[2] = column0Row2;
+        elements[3] = column1Row0;
+        elements[4] = column1Row1;
+        elements[5] = column1Row2;
+        elements[6] = column2Row0;
+        elements[7] = column2Row1;
+        elements[8] = column2Row2;
         return result;
     }
 }

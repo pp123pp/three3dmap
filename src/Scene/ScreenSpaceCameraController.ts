@@ -968,7 +968,7 @@ function rotateCVOnTerrain(controller: ScreenSpaceCameraController, startPositio
         }
 
         const oldConstrainedAxis = camera.constrainedAxis;
-        camera.constrainedAxis = undefined;
+        camera.constrainedAxis = undefined as any;
 
         rotate3D(controller, startPosition, movement, constrainedAxis, true, false);
 
@@ -1095,6 +1095,451 @@ function zoomCV(controller: ScreenSpaceCameraController, startPosition: Cartesia
     handleZoom(controller, startPosition, movement, controller._zoomFactor, distance as number);
 }
 
+const pan3DP0 = Cartesian4.clone(Cartesian4.UNIT_W);
+const pan3DP1 = Cartesian4.clone(Cartesian4.UNIT_W) as Cartesian4;
+const pan3DTemp0 = new Cartesian3();
+const pan3DTemp1 = new Cartesian3();
+const pan3DTemp2 = new Cartesian3();
+const pan3DTemp3 = new Cartesian3();
+const pan3DStartMousePosition = new Cartesian2();
+const pan3DEndMousePosition = new Cartesian2();
+
+function pan3D(controller: ScreenSpaceCameraController, startPosition: Cartesian2, movement: IMovement, ellipsoid: Ellipsoid) {
+    const scene = controller.scene;
+    const camera = scene.camera;
+
+    const startMousePosition = Cartesian2.clone(movement.startPosition, pan3DStartMousePosition) as Cartesian2;
+    const endMousePosition = Cartesian2.clone(movement.endPosition, pan3DEndMousePosition) as Cartesian2;
+
+    let p0 = camera.pickEllipsoid(startMousePosition, ellipsoid, pan3DP0 as unknown as Cartesian3) as any;
+    let p1 = camera.pickEllipsoid(endMousePosition, ellipsoid, pan3DP1 as unknown as Cartesian3) as any;
+
+    if (!defined(p0) || !defined(p1)) {
+        controller._rotating = true;
+        rotate3D(controller, startPosition, movement);
+        return;
+    }
+
+    p0 = camera.worldToCameraCoordinates(p0, p0);
+    p1 = camera.worldToCameraCoordinates(p1, p1);
+
+    if (!defined(camera.constrainedAxis)) {
+        Cartesian3.normalize(p0, p0);
+        Cartesian3.normalize(p1, p1);
+        const dot = Cartesian3.dot(p0, p1);
+        const axis = Cartesian3.cross(p0, p1, pan3DTemp0);
+
+        if (dot < 1.0 && !Cartesian3.equalsEpsilon(axis, Cartesian3.ZERO, CesiumMath.EPSILON14)) {
+            // dot is in [0, 1]
+            const angle = Math.acos(dot);
+            camera.rotate(axis, angle);
+        }
+    } else {
+        const basis0 = camera.constrainedAxis;
+        const basis1 = Cartesian3.mostOrthogonalAxis(basis0, pan3DTemp0);
+        Cartesian3.cross(basis1, basis0, basis1);
+        Cartesian3.normalize(basis1, basis1);
+        const basis2 = Cartesian3.cross(basis0, basis1, pan3DTemp1);
+
+        const startRho = Cartesian3.magnitude(p0);
+        const startDot = Cartesian3.dot(basis0, p0);
+        const startTheta = Math.acos(startDot / startRho);
+        const startRej = Cartesian3.multiplyByScalar(basis0, startDot, pan3DTemp2);
+        Cartesian3.subtract(p0, startRej, startRej);
+        Cartesian3.normalize(startRej, startRej);
+
+        const endRho = Cartesian3.magnitude(p1);
+        const endDot = Cartesian3.dot(basis0, p1);
+        const endTheta = Math.acos(endDot / endRho);
+        const endRej = Cartesian3.multiplyByScalar(basis0, endDot, pan3DTemp3);
+        Cartesian3.subtract(p1, endRej, endRej);
+        Cartesian3.normalize(endRej, endRej);
+
+        let startPhi = Math.acos(Cartesian3.dot(startRej, basis1));
+        if (Cartesian3.dot(startRej, basis2) < 0) {
+            startPhi = CesiumMath.TWO_PI - startPhi;
+        }
+
+        let endPhi = Math.acos(Cartesian3.dot(endRej, basis1));
+        if (Cartesian3.dot(endRej, basis2) < 0) {
+            endPhi = CesiumMath.TWO_PI - endPhi;
+        }
+
+        const deltaPhi = startPhi - endPhi;
+
+        let east;
+        if (Cartesian3.equalsEpsilon(basis0, camera.position, CesiumMath.EPSILON2)) {
+            east = camera.right;
+        } else {
+            east = Cartesian3.cross(basis0, camera.position, pan3DTemp0);
+        }
+
+        const planeNormal = Cartesian3.cross(basis0, east, pan3DTemp0);
+        const side0 = Cartesian3.dot(planeNormal, Cartesian3.subtract(p0, basis0, pan3DTemp1));
+        const side1 = Cartesian3.dot(planeNormal, Cartesian3.subtract(p1, basis0, pan3DTemp1));
+
+        let deltaTheta;
+        if (side0 > 0 && side1 > 0) {
+            deltaTheta = endTheta - startTheta;
+        } else if (side0 > 0 && side1 <= 0) {
+            if (Cartesian3.dot(camera.position, basis0) > 0) {
+                deltaTheta = -startTheta - endTheta;
+            } else {
+                deltaTheta = startTheta + endTheta;
+            }
+        } else {
+            deltaTheta = startTheta - endTheta;
+        }
+
+        camera.rotateRight(deltaPhi);
+        camera.rotateUp(deltaTheta);
+    }
+}
+
+function spin3D(controller: ScreenSpaceCameraController, startPosition: Cartesian2, movement: IMovement) {
+    const scene = controller.scene;
+    const camera = scene.camera;
+    const cameraUnderground = controller._cameraUnderground;
+    let ellipsoid = controller._ellipsoid;
+
+    if (!CesiumMatrix4.equals(camera.transform, CesiumMatrix4.IDENTITY)) {
+        rotate3D(controller, startPosition, movement);
+        return;
+    }
+
+    let magnitude;
+    let radii;
+
+    const up = ellipsoid.geodeticSurfaceNormal(camera.position, scratchLookUp);
+
+    if (Cartesian2.equals(startPosition, controller._rotateMousePosition)) {
+        if (controller._looking) {
+            look3D(controller, startPosition, movement, up);
+        } else if (controller._rotating) {
+            rotate3D(controller, startPosition, movement);
+        } else if (controller._strafing) {
+            continueStrafing(controller, movement);
+        } else {
+            if (Cartesian3.magnitude(camera.position) < Cartesian3.magnitude(controller._rotateStartPosition)) {
+                // Pan action is no longer valid if camera moves below the pan ellipsoid
+                return;
+            }
+            magnitude = Cartesian3.magnitude(controller._rotateStartPosition);
+            radii = scratchRadii;
+            radii.x = radii.y = radii.z = magnitude;
+            ellipsoid = Ellipsoid.fromCartesian3(radii, scratchEllipsoid);
+            pan3D(controller, startPosition, movement, ellipsoid);
+        }
+        return;
+    }
+    controller._looking = false;
+    controller._rotating = false;
+    controller._strafing = false;
+
+    const height = ellipsoid.cartesianToCartographic(camera.positionWC, scratchCartographic).height;
+    const globe = controller._globe;
+
+    if (defined(globe) && height < controller._minimumPickingTerrainHeight) {
+        const mousePos = pickGlobe(controller, movement.startPosition, scratchMousePos);
+        if (defined(mousePos)) {
+            let strafing = false;
+            const ray = camera.getPickRay(movement.startPosition, pickGlobeScratchRay) as CesiumRay;
+
+            if (cameraUnderground) {
+                strafing = true;
+                getStrafeStartPositionUnderground(controller, ray, mousePos, mousePos);
+            } else {
+                const normal = ellipsoid.geodeticSurfaceNormal(mousePos, scratchNormal);
+                const tangentPick = Math.abs(Cartesian3.dot(ray.direction, normal)) < 0.05;
+
+                if (tangentPick) {
+                    strafing = true;
+                } else {
+                    strafing = Cartesian3.magnitude(camera.position) < Cartesian3.magnitude(mousePos);
+                }
+            }
+
+            if (strafing) {
+                Cartesian2.clone(startPosition, controller._strafeEndMousePosition);
+                Cartesian3.clone(mousePos, controller._strafeStartPosition);
+                controller._strafing = true;
+                strafe(controller, movement, controller._strafeStartPosition);
+            } else {
+                magnitude = Cartesian3.magnitude(mousePos);
+                radii = scratchRadii;
+                radii.x = radii.y = radii.z = magnitude;
+                ellipsoid = Ellipsoid.fromCartesian3(radii, scratchEllipsoid);
+                pan3D(controller, startPosition, movement, ellipsoid);
+
+                Cartesian3.clone(mousePos, controller._rotateStartPosition);
+            }
+        } else {
+            controller._looking = true;
+            look3D(controller, startPosition, movement, up);
+        }
+    } else if (defined(camera.pickEllipsoid(movement.startPosition, controller._ellipsoid, spin3DPick))) {
+        pan3D(controller, startPosition, movement, controller._ellipsoid);
+        Cartesian3.clone(spin3DPick, controller._rotateStartPosition);
+    } else if (height > controller._minimumTrackBallHeight) {
+        controller._rotating = true;
+        rotate3D(controller, startPosition, movement);
+    } else {
+        controller._looking = true;
+        look3D(controller, startPosition, movement, up);
+    }
+
+    Cartesian2.clone(startPosition, controller._rotateMousePosition);
+}
+
+function tilt3D(controller: ScreenSpaceCameraController, startPosition: Cartesian2, movement: IMovement) {
+    const scene = controller.scene;
+    const camera = scene.camera;
+
+    if (!CesiumMatrix4.equals(camera.transform, CesiumMatrix4.IDENTITY)) {
+        return;
+    }
+
+    if (defined(movement.angleAndHeight)) {
+        movement = movement.angleAndHeight;
+    }
+
+    if (!Cartesian2.equals(startPosition, controller._tiltCenterMousePosition)) {
+        controller._tiltOnEllipsoid = false;
+        controller._looking = false;
+    }
+
+    if (controller._looking) {
+        const up = controller._ellipsoid.geodeticSurfaceNormal(camera.position, tilt3DLookUp);
+        look3D(controller, startPosition, movement, up);
+        return;
+    }
+
+    const ellipsoid = controller._ellipsoid;
+    const cartographic = ellipsoid.cartesianToCartographic(camera.position, tilt3DCart);
+
+    if (controller._tiltOnEllipsoid || cartographic.height > controller._minimumCollisionTerrainHeight) {
+        controller._tiltOnEllipsoid = true;
+        tilt3DOnEllipsoid(controller, startPosition, movement);
+    } else {
+        tilt3DOnTerrain(controller, startPosition, movement);
+    }
+}
+
+const tilt3DOnEllipsoidCartographic = new Cartographic();
+
+function tilt3DOnEllipsoid(controller: ScreenSpaceCameraController, startPosition: Cartesian2, movement: IMovement) {
+    const ellipsoid = controller._ellipsoid;
+    const scene = controller.scene;
+    const camera = scene.camera;
+    const minHeight = controller.minimumZoomDistance * 0.25;
+    const height = ellipsoid.cartesianToCartographic(camera.positionWC, tilt3DOnEllipsoidCartographic).height;
+    if (height - minHeight - 1.0 < CesiumMath.EPSILON3 && movement.endPosition.y - movement.startPosition.y < 0) {
+        return;
+    }
+
+    const canvas = scene.canvas;
+
+    const windowPosition = tilt3DWindowPos;
+    windowPosition.x = canvas.clientWidth / 2;
+    windowPosition.y = canvas.clientHeight / 2;
+    const ray = camera.getPickRay(windowPosition, tilt3DRay) as CesiumRay;
+
+    let center;
+    const intersection = IntersectionTests.rayEllipsoid(ray, ellipsoid) as Interval;
+    if (defined(intersection)) {
+        center = CesiumRay.getPoint(ray, intersection.start, tilt3DCenter);
+    } else if (height > controller._minimumTrackBallHeight) {
+        const grazingAltitudeLocation = IntersectionTests.grazingAltitudeLocation(ray, ellipsoid);
+        if (!defined(grazingAltitudeLocation)) {
+            return;
+        }
+        const grazingAltitudeCart = ellipsoid.cartesianToCartographic(grazingAltitudeLocation, tilt3DCart);
+        grazingAltitudeCart.height = 0.0;
+        center = ellipsoid.cartographicToCartesian(grazingAltitudeCart, tilt3DCenter);
+    } else {
+        controller._looking = true;
+        const up = controller._ellipsoid.geodeticSurfaceNormal(camera.position, tilt3DLookUp);
+        look3D(controller, startPosition, movement, up);
+        Cartesian2.clone(startPosition, controller._tiltCenterMousePosition);
+        return;
+    }
+
+    const transform = (Transforms as any).eastNorthUpToFixedFrame(center, ellipsoid, tilt3DTransform);
+
+    const oldGlobe = controller._globe;
+    const oldEllipsoid = controller._ellipsoid;
+    controller._globe = undefined;
+    controller._ellipsoid = Ellipsoid.UNIT_SPHERE;
+    controller._rotateFactor = 1.0;
+    controller._rotateRateRangeAdjustment = 1.0;
+
+    const oldTransform = CesiumMatrix4.clone(camera.transform, tilt3DOldTransform);
+    camera._setTransform(transform);
+
+    rotate3D(controller, startPosition, movement, Cartesian3.UNIT_Z);
+
+    camera._setTransform(oldTransform);
+    controller._globe = oldGlobe;
+    controller._ellipsoid = oldEllipsoid;
+
+    const radius = oldEllipsoid.maximumRadius;
+    controller._rotateFactor = 1.0 / radius;
+    controller._rotateRateRangeAdjustment = radius;
+}
+
+function tilt3DOnTerrain(controller: ScreenSpaceCameraController, startPosition: Cartesian2, movement: IMovement) {
+    const ellipsoid = controller._ellipsoid;
+    const scene = controller.scene;
+    const camera = scene.camera;
+    const cameraUnderground = controller._cameraUnderground;
+
+    let center;
+    let ray;
+    let intersection;
+
+    if (Cartesian2.equals(startPosition, controller._tiltCenterMousePosition)) {
+        center = Cartesian3.clone(controller._tiltCenter, tilt3DCenter);
+    } else {
+        center = pickGlobe(controller, startPosition, tilt3DCenter);
+
+        if (!defined(center)) {
+            ray = camera.getPickRay(startPosition, tilt3DRay) as CesiumRay;
+            intersection = IntersectionTests.rayEllipsoid(ray, ellipsoid) as Interval;
+            if (!defined(intersection)) {
+                const cartographic = ellipsoid.cartesianToCartographic(camera.position, tilt3DCart);
+                if (cartographic.height <= controller._minimumTrackBallHeight) {
+                    controller._looking = true;
+                    const up = controller._ellipsoid.geodeticSurfaceNormal(camera.position, tilt3DLookUp);
+                    look3D(controller, startPosition, movement, up);
+                    Cartesian2.clone(startPosition, controller._tiltCenterMousePosition);
+                }
+                return;
+            }
+            center = CesiumRay.getPoint(ray, intersection.start, tilt3DCenter);
+        }
+
+        if (cameraUnderground) {
+            if (!defined(ray)) {
+                ray = camera.getPickRay(startPosition, tilt3DRay);
+            }
+            getTiltCenterUnderground(controller, ray as CesiumRay, center, center);
+        }
+
+        Cartesian2.clone(startPosition, controller._tiltCenterMousePosition);
+        Cartesian3.clone(center, controller._tiltCenter);
+    }
+
+    const canvas = scene.canvas;
+
+    const windowPosition = tilt3DWindowPos;
+    windowPosition.x = canvas.clientWidth / 2;
+    windowPosition.y = controller._tiltCenterMousePosition.y;
+    ray = camera.getPickRay(windowPosition, tilt3DRay) as CesiumRay;
+
+    const mag = Cartesian3.magnitude(center);
+    const radii = Cartesian3.fromElements(mag, mag, mag, scratchRadii);
+    const newEllipsoid = Ellipsoid.fromCartesian3(radii, scratchEllipsoid);
+
+    intersection = IntersectionTests.rayEllipsoid(ray, newEllipsoid) as Interval;
+    if (!defined(intersection)) {
+        return;
+    }
+
+    const t = Cartesian3.magnitude(ray.origin) > mag ? intersection.start : intersection.stop;
+    const verticalCenter = CesiumRay.getPoint(ray, t, tilt3DVerticalCenter);
+
+    const transform = (Transforms as any).eastNorthUpToFixedFrame(center, ellipsoid, tilt3DTransform);
+    const verticalTransform = (Transforms as any).eastNorthUpToFixedFrame(verticalCenter, newEllipsoid, tilt3DVerticalTransform);
+
+    const oldGlobe = controller._globe;
+    const oldEllipsoid = controller._ellipsoid;
+    controller._globe = undefined;
+    controller._ellipsoid = Ellipsoid.UNIT_SPHERE;
+    controller._rotateFactor = 1.0;
+    controller._rotateRateRangeAdjustment = 1.0;
+
+    let constrainedAxis = Cartesian3.UNIT_Z as any;
+
+    const oldTransform = CesiumMatrix4.clone(camera.transform, tilt3DOldTransform);
+    camera._setTransform(verticalTransform);
+
+    const tangent = Cartesian3.cross(verticalCenter, camera.positionWC, tilt3DCartesian3);
+    const dot = Cartesian3.dot(camera.rightWC, tangent);
+
+    if (dot < 0.0) {
+        const movementDelta = movement.startPosition.y - movement.endPosition.y;
+        if ((cameraUnderground && movementDelta < 0.0) || (!cameraUnderground && movementDelta > 0.0)) {
+            // Prevent camera from flipping past the up axis
+            constrainedAxis = undefined;
+        }
+
+        const oldConstrainedAxis = camera.constrainedAxis;
+        camera.constrainedAxis = undefined as any;
+
+        rotate3D(controller, startPosition, movement, constrainedAxis, true, false);
+
+        camera.constrainedAxis = oldConstrainedAxis;
+    } else {
+        rotate3D(controller, startPosition, movement, constrainedAxis, true, false);
+    }
+
+    camera._setTransform(transform);
+    rotate3D(controller, startPosition, movement, constrainedAxis, false, true);
+
+    if (defined(camera.constrainedAxis)) {
+        const right = Cartesian3.cross(camera.direction, camera.constrainedAxis, tilt3DCartesian3);
+        if (!Cartesian3.equalsEpsilon(right, Cartesian3.ZERO, CesiumMath.EPSILON6)) {
+            if (Cartesian3.dot(right, camera.right) < 0.0) {
+                Cartesian3.negate(right, right);
+            }
+
+            Cartesian3.cross(right, camera.direction, camera.up);
+            Cartesian3.cross(camera.direction, camera.up, camera.right);
+
+            Cartesian3.normalize(camera.up, camera.up);
+            Cartesian3.normalize(camera.right, camera.right);
+        }
+    }
+
+    camera._setTransform(oldTransform);
+    controller._globe = oldGlobe;
+    controller._ellipsoid = oldEllipsoid;
+
+    const radius = oldEllipsoid.maximumRadius;
+    controller._rotateFactor = 1.0 / radius;
+    controller._rotateRateRangeAdjustment = radius;
+
+    const originalPosition = Cartesian3.clone(camera.positionWC, tilt3DCartesian3);
+
+    if (controller.enableCollisionDetection) {
+        adjustHeightForTerrain(controller);
+    }
+
+    if (!Cartesian3.equals(camera.positionWC, originalPosition)) {
+        camera._setTransform(verticalTransform);
+        camera.worldToCameraCoordinatesPoint(originalPosition, originalPosition);
+
+        const magSqrd = Cartesian3.magnitudeSquared(originalPosition);
+        if (Cartesian3.magnitudeSquared(camera.position) > magSqrd) {
+            Cartesian3.normalize(camera.position, camera.position);
+            Cartesian3.multiplyByScalar(camera.position, Math.sqrt(magSqrd), camera.position);
+        }
+
+        const angle = Cartesian3.angleBetween(originalPosition, camera.position);
+        const axis = Cartesian3.cross(originalPosition, camera.position, originalPosition);
+        Cartesian3.normalize(axis, axis);
+
+        const quaternion = CesiumQuaternion.fromAxisAngle(axis, angle, tilt3DQuaternion);
+        const rotation = CesiumMatrix3.fromQuaternion(quaternion, tilt3DMatrix);
+        CesiumMatrix3.multiplyByVector(rotation, camera.direction, camera.direction);
+        CesiumMatrix3.multiplyByVector(rotation, camera.up, camera.up);
+        Cartesian3.cross(camera.direction, camera.up, camera.right);
+        Cartesian3.cross(camera.right, camera.direction, camera.up);
+
+        camera._setTransform(oldTransform);
+    }
+}
+
 function updateCV(controller: ScreenSpaceCameraController) {
     const scene = controller.scene;
     const camera = scene.camera;
@@ -1123,6 +1568,13 @@ function updateCV(controller: ScreenSpaceCameraController) {
 
         tweens.update();
     }
+}
+
+function update3D(controller: ScreenSpaceCameraController) {
+    reactToInput(controller, controller.enableRotate, controller.rotateEventTypes, spin3D, controller.inertiaSpin, '_lastInertiaSpinMovement');
+    reactToInput(controller, controller.enableZoom, controller.zoomEventTypes, zoom3D, controller.inertiaZoom, '_lastInertiaZoomMovement');
+    reactToInput(controller, controller.enableTilt, controller.tiltEventTypes, tilt3D, controller.inertiaSpin, '_lastInertiaTiltMovement');
+    reactToInput(controller, controller.enableLook, controller.lookEventTypes, look3D);
 }
 
 const scratchStrafeRay = new CesiumRay();
@@ -1265,7 +1717,7 @@ function rotate3D(controller: ScreenSpaceCameraController, startPosition: Cartes
 
     const oldAxis = camera.constrainedAxis;
     if (defined(constrainedAxis)) {
-        camera.constrainedAxis = constrainedAxis;
+        camera.constrainedAxis = constrainedAxis as Cartesian3;
     }
 
     const rho = Cartesian3.magnitude(camera.position);
@@ -1297,15 +1749,6 @@ function rotate3D(controller: ScreenSpaceCameraController, startPosition: Cartes
 
     camera.constrainedAxis = oldAxis;
 }
-
-const pan3DP0 = Cartesian4.clone(Cartesian4.UNIT_W);
-const pan3DP1 = Cartesian4.clone(Cartesian4.UNIT_W);
-const pan3DTemp0 = new Cartesian3();
-const pan3DTemp1 = new Cartesian3();
-const pan3DTemp2 = new Cartesian3();
-const pan3DTemp3 = new Cartesian3();
-const pan3DStartMousePosition = new Cartesian2();
-const pan3DEndMousePosition = new Cartesian2();
 
 // function pan3D(controller: ScreenSpaceCameraController, startPosition, movement, ellipsoid) {
 //     const scene = controller.scene;
@@ -1499,8 +1942,6 @@ const tilt3DLookUp = new Cartesian3();
 //         tilt3DOnTerrain(controller, startPosition, movement);
 //     }
 // }
-
-const tilt3DOnEllipsoidCartographic = new Cartographic();
 
 // function tilt3DOnEllipsoid(controller: ScreenSpaceCameraController, startPosition, movement) {
 //     const ellipsoid = controller._ellipsoid;
@@ -1910,6 +2351,8 @@ function adjustHeightForTerrain(controller: ScreenSpaceCameraController) {
  * @param {Scene} scene The scene.
  */
 export default class ScreenSpaceCameraController {
+    _tiltOnEllipsoid?: boolean;
+
     /**
      * If true, inputs are allowed conditionally with the flags enableTranslate, enableZoom,
      * enableRotate, enableTilt, and enableLook.  If false, all inputs are disabled.
@@ -2226,18 +2669,15 @@ export default class ScreenSpaceCameraController {
         const previousPosition = Cartesian3.clone(camera.positionWC, scratchPreviousPosition);
         const previousDirection = Cartesian3.clone(camera.directionWC, scratchPreviousDirection);
 
-        // if (mode === SceneMode.SCENE2D) {
-        //     update2D(this);
-        // } else if (mode === SceneMode.COLUMBUS_VIEW) {
-        //     this._horizontalRotationAxis = Cartesian3.UNIT_Z;
-        //     updateCV(this);
-        // } else if (mode === SceneMode.SCENE3D) {
-        //     this._horizontalRotationAxis = undefined;
-        //     update3D(this);
-        // }
-
-        this._horizontalRotationAxis = Cartesian3.UNIT_Z;
-        updateCV(this);
+        if (mode === SceneMode.SCENE2D) {
+            // update2D(this);
+        } else if (mode === SceneMode.COLUMBUS_VIEW) {
+            this._horizontalRotationAxis = Cartesian3.UNIT_Z;
+            updateCV(this);
+        } else if (mode === SceneMode.SCENE3D) {
+            this._horizontalRotationAxis = undefined;
+            update3D(this);
+        }
 
         if (this.enableCollisionDetection && !this._adjustedHeightForTerrain) {
             // Adjust the camera height if the camera moved at all (user input or inertia) and an action didn't already adjust the camera height

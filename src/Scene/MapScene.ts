@@ -199,7 +199,7 @@ export default class MapScene extends Scene {
 
     readonly tweens = new TweenCollection();
 
-    readonly mode: SceneMode = SceneMode.COLUMBUS_VIEW;
+    _mode: SceneMode = SceneMode.SCENE3D;
 
     readonly computeEngine: ComputeEngine;
 
@@ -223,6 +223,8 @@ export default class MapScene extends Scene {
 
     readonly pickPositionSupported = true;
     _globeHeight?: number;
+
+    readonly morphStart = new Emit();
     constructor(options: SceneOptions) {
         super();
 
@@ -305,6 +307,14 @@ export default class MapScene extends Scene {
 
     get globeHeight(): number {
         return this._globeHeight as number;
+    }
+
+    get mode(): SceneMode {
+        return this._mode;
+    }
+
+    set mode(value: SceneMode) {
+        this._mode = value;
     }
 
     initializeFrame(): void {
@@ -418,6 +428,24 @@ export default class MapScene extends Scene {
     updateEnvironment() {
         const frameState = this.frameState;
         const globe = this.globe;
+    }
+
+    /**
+     * Asynchronously transitions the scene to Columbus View.
+     * @param {Number} [duration=2.0] The amount of time, in seconds, for transition animations to complete.
+     */
+    morphToColumbusView(duration = 0): void {
+        let ellipsoid;
+        const globe = this.globe;
+        if (defined(globe)) {
+            ellipsoid = globe.ellipsoid;
+        } else {
+            ellipsoid = this.mapProjection.ellipsoid;
+        }
+        duration = defaultValue(duration, 2.0);
+        // this._transitioner.morphToColumbusView(duration, ellipsoid);
+
+        this.mode = SceneMode.COLUMBUS_VIEW;
     }
 }
 function getGlobeHeight(scene: MapScene) {

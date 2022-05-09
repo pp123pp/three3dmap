@@ -1,5 +1,6 @@
 import Cartesian2 from '@/Core/Cartesian2';
 import Cartesian3 from '@/Core/Cartesian3';
+import Cartesian4 from '@/Core/Cartesian4';
 import Cartographic from '@/Core/Cartographic';
 import { CesiumMath } from '@/Core/CesiumMath';
 import CesiumMatrix3 from '@/Core/CesiumMatrix3';
@@ -11,10 +12,12 @@ import { defaultValue } from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import DeveloperError from '@/Core/DeveloperError';
 import { EasingFunction } from '@/Core/EasingFunction';
+import Ellipsoid from '@/Core/Ellipsoid';
 import EllipsoidGeodesic from '@/Core/EllipsoidGeodesic';
 import Emit from '@/Core/Emit';
 import { GeographicProjection } from '@/Core/GeographicProjection';
 import { HeadingPitchRoll } from '@/Core/HeadingPitchRoll';
+import IntersectionTests from '@/Core/IntersectionTests';
 import Rectangle from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import Transforms from '@/Core/Transforms';
@@ -149,7 +152,7 @@ export default class MapCamera {
      * @type {Cartesian3}
      * @default undefined
      */
-    constrainedAxis?: Cartesian3 = Cartesian3.UNIT_Z;
+    constrainedAxis = Cartesian3.UNIT_Z;
     /**
      * The factor multiplied by the the map size used to determine where to clamp the camera position
      * when zooming out from the surface. The default is 1.5. Only valid for 2D and the map is rotatable.
@@ -872,6 +875,43 @@ export default class MapCamera {
     }
 
     /**
+     * Pick an ellipsoid or map.
+     *
+     * @param {Cartesian2} windowPosition The x and y coordinates of a pixel.
+     * @param {Ellipsoid} [ellipsoid=Ellipsoid.WGS84] The ellipsoid to pick.
+     * @param {Cartesian3} [result] The object onto which to store the result.
+     * @returns {Cartesian3 | undefined} If the ellipsoid or map was picked,
+     * returns the point on the surface of the ellipsoid or map in world
+     * coordinates. If the ellipsoid or map was not picked, returns undefined.
+     *
+     * @example
+     * const canvas = viewer.scene.canvas;
+     * const center = new Cesium.Cartesian2(canvas.clientWidth / 2.0, canvas.clientHeight / 2.0);
+     * const ellipsoid = viewer.scene.globe.ellipsoid;
+     * const result = viewer.camera.pickEllipsoid(center, ellipsoid);
+     */
+    pickEllipsoid(windowPosition: Cartesian2, ellipsoid = Ellipsoid.WGS84, result = new Cartesian3()): Cartesian3 | undefined {
+        const canvas = this.scene.canvas;
+        if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+            return undefined;
+        }
+
+        ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
+
+        if (this._mode === SceneMode.SCENE3D) {
+            result = pickEllipsoid3D(this, windowPosition, ellipsoid, result) as Cartesian3;
+        } else if (this._mode === SceneMode.SCENE2D) {
+            result = pickMap2D(this, windowPosition, this._projection, result) as Cartesian3;
+        } else if (this._mode === SceneMode.COLUMBUS_VIEW) {
+            result = pickMapColumbusView(this, windowPosition, this._projection, result) as Cartesian3;
+        } else {
+            return undefined;
+        }
+
+        return result;
+    }
+
+    /**
      * Rotates the camera around <code>axis</code> by <code>angle</code>. The distance
      * of the camera's position to the center of the camera's reference frame remains the same.
      *
@@ -986,6 +1026,18 @@ export default class MapCamera {
     cameraToWorldCoordinatesPoint(cartesian: Cartesian3, result = new Cartesian3()): Cartesian3 {
         updateMembers(this);
         return CesiumMatrix4.multiplyByPoint(this._actualTransform, cartesian, result);
+    }
+
+    /**
+     * Transform a vector or point from world coordinates to the camera's reference frame.
+     *
+     * @param {Cartesian4} cartesian The vector or point to transform.
+     * @param {Cartesian4} [result] The object onto which to store the result.
+     * @returns {Cartesian4} The transformed vector or point.
+     */
+    worldToCameraCoordinates(cartesian: Cartesian4, result = new Cartesian4()): Cartesian4 {
+        updateMembers(this);
+        return CesiumMatrix4.multiplyByVector(this._actualInvTransform, cartesian, result);
     }
 }
 
@@ -1539,4 +1591,46 @@ function rectangleCameraPosition3D(camera: MapCamera, rectangle: Rectangle, resu
     }
 
     return Cartesian3.add(center, Cartesian3.multiplyByScalar(direction, -d, viewRectangle3DEquator), result);
+}
+
+const pickEllipsoid3DRay = new CesiumRay();
+function pickEllipsoid3D(camera: MapCamera, windowPosition: Cartesian2, ellipsoid: Ellipsoid, result?: Cartesian3): Cartesian3 | undefined {
+    ellipsoid = defaultValue(ellipsoid, Ellipsoid.WGS84);
+    const ray = camera.getPickRay(windowPosition, pickEllipsoid3DRay) as CesiumRay;
+    const intersection = IntersectionTests.rayEllipsoid(ray, ellipsoid);
+    if (!intersection) {
+        return undefined;
+    }
+
+    const t = intersection.start > 0.0 ? intersection.start : intersection.stop;
+    return CesiumRay.getPoint(ray, t, result);
+}
+
+const pickEllipsoid2DRay = new CesiumRay();
+function pickMap2D(camera: MapCamera, windowPosition: Cartesian2, projection: GeographicProjection, result?: Cartesian3) {
+    const ray = camera.getPickRay(windowPosition, pickEllipsoid2DRay) as CesiumRay;
+    let position = ray.origin;
+    position = Cartesian3.fromElements(position.y, position.z, 0.0, position);
+    const cart = projection.unproject(position);
+
+    if (cart.latitude < -CesiumMath.PI_OVER_TWO || cart.latitude > CesiumMath.PI_OVER_TWO) {
+        return undefined;
+    }
+
+    return projection.ellipsoid.cartographicToCartesian(cart, result);
+}
+
+const pickEllipsoidCVRay = new CesiumRay();
+function pickMapColumbusView(camera: MapCamera, windowPosition: Cartesian2, projection: GeographicProjection, result = new Cartesian3()) {
+    const ray = camera.getPickRay(windowPosition, pickEllipsoidCVRay) as CesiumRay;
+    const scalar = -ray.origin.x / ray.direction.x;
+    CesiumRay.getPoint(ray, scalar, result);
+
+    const cart = projection.unproject(new Cartesian3(result.y, result.z, 0.0));
+
+    if (cart.latitude < -CesiumMath.PI_OVER_TWO || cart.latitude > CesiumMath.PI_OVER_TWO || cart.longitude < -Math.PI || cart.longitude > Math.PI) {
+        return undefined;
+    }
+
+    return projection.ellipsoid.cartographicToCartesian(cart, result);
 }
