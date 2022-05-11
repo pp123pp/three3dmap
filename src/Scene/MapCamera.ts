@@ -321,10 +321,10 @@ export default class MapCamera {
     get positionWC(): Cartesian3 {
         updateMembers(this);
 
-        // aaaPositionWC.set(this._positionWC.z, this._positionWC.x, this._positionWC.y);
+        aaaPositionWC.set(this._positionWC.z, this._positionWC.x, this._positionWC.y);
 
-        return this._positionWC;
-        // return aaaPositionWC;
+        // return this._positionWC;
+        return aaaPositionWC;
     }
 
     get directionWC(): Cartesian3 {
@@ -1316,7 +1316,7 @@ function convertTransformForColumbusView(camera: MapCamera) {
 
 const ssps = new Cartesian3();
 function updateViewMatrix(camera: MapCamera) {
-    [camera._position.x, camera._position.y, camera._position.z] = [camera._position.z, camera._position.x, camera._position.y];
+    // [camera._position.x, camera._position.y, camera._position.z] = [camera._position.z, camera._position.x, camera._position.y];
 
     CesiumMatrix4.computeView(camera._position, camera._direction, camera._up, camera._right, camera._viewMatrix);
     CesiumMatrix4.multiply(camera._viewMatrix, camera._actualInvTransform, camera._viewMatrix);
