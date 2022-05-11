@@ -21,7 +21,7 @@ import IntersectionTests from '@/Core/IntersectionTests';
 import Rectangle from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import Transforms from '@/Core/Transforms';
-import { Frustum, OrthographicCamera, Vector3 } from 'three';
+import { Frustum, MathUtils, OrthographicCamera, Vector3 } from 'three';
 import MapScene from './MapScene';
 import PerspectiveFrustumCamera from './PerspectiveFrustumCamera';
 
@@ -93,31 +93,38 @@ function getPickRayPerspective(camera: MapCamera, windowPosition: Cartesian2, re
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    const tanPhi = Math.tan(camera.frustum.fovy * 0.5);
-    const tanTheta = camera.frustum.aspectRatio * tanPhi;
-    const near = camera.frustum.near;
+    const x = (windowPosition.x / width) * 2 - 1;
+    const y = -(windowPosition.y / height) * 2 + 1;
 
-    const x = (2.0 / width) * windowPosition.x - 1.0;
-    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+    result.origin.setFromMatrixPosition(camera.frustum.matrixWorld);
+    result.direction.set(x, y, 0.5).unproject(camera.frustum).sub(result.origin).normalize();
 
-    const position = camera.positionWC;
-    Cartesian3.clone(position, result.origin);
+    // const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
+    // const tanTheta = camera.frustum.aspectRatio * tanPhi;
+    // const near = camera.frustum.near;
 
-    const nearCenter = Cartesian3.multiplyByScalar(camera.directionWC, near, pickPerspCenter);
-    Cartesian3.add(position, nearCenter, nearCenter);
-    const xDir = Cartesian3.multiplyByScalar(camera.rightWC, x * near * tanTheta, pickPerspXDir);
-    const yDir = Cartesian3.multiplyByScalar(camera.upWC, y * near * tanPhi, pickPerspYDir);
-    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
-    Cartesian3.add(direction, yDir, direction);
-    Cartesian3.subtract(direction, position, direction);
-    Cartesian3.normalize(direction, direction);
+    // const x = (2.0 / width) * windowPosition.x - 1.0;
+    // const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+
+    // const position = camera.positionWC;
+    // Cartesian3.clone(position, result.origin);
+
+    // const nearCenter = Cartesian3.multiplyByScalar(camera.directionWC, near, pickPerspCenter);
+    // Cartesian3.add(position, nearCenter, nearCenter);
+    // const xDir = Cartesian3.multiplyByScalar(camera.rightWC, x * near * tanTheta, pickPerspXDir);
+    // const yDir = Cartesian3.multiplyByScalar(camera.upWC, y * near * tanPhi, pickPerspYDir);
+    // const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    // Cartesian3.add(direction, yDir, direction);
+    // Cartesian3.subtract(direction, position, direction);
+    // Cartesian3.normalize(direction, direction);
 
     return result;
 }
 
+const aaaPositionWC = new Cartesian3();
+
 export default class MapCamera {
     readonly scene: MapScene;
-    mode = SceneMode.COLUMBUS_VIEW;
 
     /**
      * The default amount to move the camera when an argument is not
@@ -313,7 +320,11 @@ export default class MapCamera {
 
     get positionWC(): Cartesian3 {
         updateMembers(this);
+
+        // aaaPositionWC.set(this._positionWC.z, this._positionWC.x, this._positionWC.y);
+
         return this._positionWC;
+        // return aaaPositionWC;
     }
 
     get directionWC(): Cartesian3 {
@@ -524,10 +535,10 @@ export default class MapCamera {
 
     update(mode: SceneMode): void {
         let updateFrustum = false;
-        if (mode !== this.mode) {
-            this.mode = mode;
+        if (mode !== this._mode) {
+            this._mode = mode;
             this.modeChanged = mode !== SceneMode.MORPHING;
-            updateFrustum = this.mode === SceneMode.SCENE2D;
+            updateFrustum = this._mode === SceneMode.SCENE2D;
         }
 
         // if (updateFrustum) {
@@ -1303,16 +1314,22 @@ function convertTransformForColumbusView(camera: MapCamera) {
     Transforms.basisTo2D(camera._projection, camera._transform, camera._actualTransform);
 }
 
+const ssps = new Cartesian3();
 function updateViewMatrix(camera: MapCamera) {
+    [camera._position.x, camera._position.y, camera._position.z] = [camera._position.z, camera._position.x, camera._position.y];
+
     CesiumMatrix4.computeView(camera._position, camera._direction, camera._up, camera._right, camera._viewMatrix);
     CesiumMatrix4.multiply(camera._viewMatrix, camera._actualInvTransform, camera._viewMatrix);
     CesiumMatrix4.inverseTransformation(camera._viewMatrix, camera._invViewMatrix);
 
     // CesiumMatrix4.transformToThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
 
-    camera.frustum.matrixWorld.copy(camera._invViewMatrix);
+    // camera.frustum.matrixWorld.copy(camera._invViewMatrix);
 
-    camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
+    camera._invViewMatrix.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
+
+    // camera._invViewMatrix.decompose(ssps, camera.frustum.quaternion, camera.frustum.scale);
+    // camera.frustum.position.set(ssps.z, ssps.x, ssps.y);
 }
 
 const viewRectangleCVCartographic = new Cartographic();
@@ -1363,7 +1380,7 @@ function directionUpToHeadingPitchRoll(camera: MapCamera, position: Cartesian3, 
     const direction = Cartesian3.clone(orientation.direction as Cartesian3, scratchToHPRDirection);
     const up = Cartesian3.clone(orientation.up as Cartesian3, scratchToHPRUp);
 
-    if (camera.mode === SceneMode.SCENE3D) {
+    if (camera._mode === SceneMode.SCENE3D) {
         const ellipsoid = camera._projection.ellipsoid;
         const transform = (Transforms as any).eastNorthUpToFixedFrame(position, ellipsoid, scratchHPRMatrix1);
         const invTransform = CesiumMatrix4.inverseTransformation(transform, scratchHPRMatrix2);

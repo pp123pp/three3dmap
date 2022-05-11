@@ -131,10 +131,10 @@ const invalidateAllTiles = function (primitive: QuadtreePrimitive) {
 
 // var scratchRay = new Ray();
 
-const addTileToRenderList = function addTileToRenderList(primitive: QuadtreePrimitive, tile: any) {
+function addTileToRenderList(primitive: QuadtreePrimitive, tile: any) {
     primitive._tilesToRender.push(tile);
     ++primitive._debug.tilesRendered;
-};
+}
 
 function processTileLoadQueue(primitive: QuadtreePrimitive, frameState: FrameState) {
     const tileLoadQueueHigh = primitive._tileLoadQueueHigh;
@@ -363,14 +363,14 @@ function visitTile(primitive: QuadtreePrimitive, frameState: FrameState, tile: Q
         const twoCulledOrNotVisited = TileSelectionResult.originalResult(lastFrameSelectionResult) === TileSelectionResult.CULLED || lastFrameSelectionResult === TileSelectionResult.NONE;
         const threeCompletelyLoaded = tile.state === QuadtreeTileLoadState.DONE;
 
-        const renderable = oneRenderedLastFrame || twoCulledOrNotVisited || threeCompletelyLoaded;
+        let renderable = oneRenderedLastFrame || twoCulledOrNotVisited || threeCompletelyLoaded;
 
         if (!renderable) {
             // Check the more expensive condition 4 above. This requires details of the thing
             // we're rendering (e.g. the globe surface), so delegate it to the tile provider.
-            // if (defined(tileProvider.canRenderWithoutLosingDetail)) {
-            //     renderable = tileProvider.canRenderWithoutLosingDetail(tile);
-            // }
+            if (defined(tileProvider.canRenderWithoutLosingDetail)) {
+                renderable = tileProvider.canRenderWithoutLosingDetail(tile);
+            }
         }
 
         if (renderable) {

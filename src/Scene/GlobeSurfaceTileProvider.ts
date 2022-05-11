@@ -25,9 +25,11 @@ import { FrameState } from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
+import { ImageryState } from './ImageryState';
 import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
 import TerrainFillMesh from './TerrainFillMesh';
+import TerrainState from './TerrainState';
 import TileSelectionResult from './TileSelectionResult';
 
 interface IGlobeSurfaceTileProviderParameter {
@@ -41,6 +43,9 @@ const rtcScratch = new Cartesian3();
 const southwestScratch = new Cartesian3();
 const northeastScratch = new Cartesian3();
 const otherPassesInitialColor = new Cartesian4(0.0, 0.0, 0.0, 0.0);
+
+const readyImageryScratch: any[] = [];
+const canRenderTraversalStack: any[] = [];
 
 function sortTileImageryByLayerIndex(a: any, b: any) {
     let aImagery = a.loadingImagery;
@@ -538,6 +543,100 @@ export default class GlobeSurfaceTileProvider {
         this._firstPassInitialColor = Cartesian4.fromColor(value, this._firstPassInitialColor);
     }
 
+    /**
+     * Determines if the given not-fully-loaded tile can be rendered without losing detail that
+     * was present last frame as a result of rendering descendant tiles. This method will only be
+     * called if this tile's descendants were rendered last frame. If the tile is fully loaded,
+     * it is assumed that this method will return true and it will not be called.
+     * @param {QuadtreeTile} tile The tile to check.
+     * @returns {boolean} True if the tile can be rendered without losing detail.
+     */
+    canRenderWithoutLosingDetail(tile: QuadtreeTile) {
+        const surfaceTile = tile.data as GlobeSurfaceTile;
+
+        const readyImagery = readyImageryScratch;
+        readyImagery.length = this._imageryLayers.length;
+
+        let terrainReady = false;
+        let initialImageryState = false;
+        let imagery: any;
+
+        if (defined(surfaceTile)) {
+            // We can render even with non-ready terrain as long as all our rendered descendants
+            // are missing terrain geometry too. i.e. if we rendered fills for more detailed tiles
+            // last frame, it's ok to render a fill for this tile this frame.
+            terrainReady = surfaceTile.terrainState === TerrainState.READY;
+
+            // Initially assume all imagery layers are ready, unless imagery hasn't been initialized at all.
+            initialImageryState = true;
+
+            imagery = surfaceTile.imagery;
+        }
+
+        let i;
+        let len: any;
+
+        for (i = 0, len = readyImagery.length; i < len; ++i) {
+            readyImagery[i] = initialImageryState;
+        }
+
+        if (defined(imagery)) {
+            for (i = 0, len = imagery.length; i < len; ++i) {
+                const tileImagery = imagery[i];
+                const loadingImagery = tileImagery.loadingImagery;
+                const isReady = !defined(loadingImagery) || loadingImagery.state === ImageryState.FAILED || loadingImagery.state === ImageryState.INVALID;
+                const layerIndex = (tileImagery.loadingImagery || tileImagery.readyImagery).imageryLayer._layerIndex;
+
+                // For a layer to be ready, all tiles belonging to that layer must be ready.
+                readyImagery[layerIndex] = isReady && readyImagery[layerIndex];
+            }
+        }
+
+        const lastFrame = this.quadtree._lastSelectionFrameNumber;
+
+        // Traverse the descendants looking for one with terrain or imagery that is not loaded on this tile.
+        const stack = canRenderTraversalStack;
+        stack.length = 0;
+        stack.push(tile.southwestChild, tile.southeastChild, tile.northwestChild, tile.northeastChild);
+
+        while (stack.length > 0) {
+            const descendant = stack.pop();
+            const lastFrameSelectionResult = descendant._lastSelectionResultFrame === lastFrame ? descendant._lastSelectionResult : TileSelectionResult.NONE;
+
+            if (lastFrameSelectionResult === TileSelectionResult.RENDERED) {
+                const descendantSurface = descendant.data;
+
+                if (!defined(descendantSurface)) {
+                    // Descendant has no data, so it can't block rendering.
+                    continue;
+                }
+
+                if (!terrainReady && descendant.data.terrainState === TerrainState.READY) {
+                    // Rendered descendant has real terrain, but we don't. Rendering is blocked.
+                    return false;
+                }
+
+                const descendantImagery = descendant.data.imagery;
+                for (i = 0, len = descendantImagery.length; i < len; ++i) {
+                    const descendantTileImagery = descendantImagery[i];
+                    const descendantLoadingImagery = descendantTileImagery.loadingImagery;
+                    const descendantIsReady = !defined(descendantLoadingImagery) || descendantLoadingImagery.state === ImageryState.FAILED || descendantLoadingImagery.state === ImageryState.INVALID;
+                    const descendantLayerIndex = (descendantTileImagery.loadingImagery || descendantTileImagery.readyImagery).imageryLayer._layerIndex;
+
+                    // If this imagery tile of a descendant is ready but the layer isn't ready in this tile,
+                    // then rendering is blocked.
+                    if (descendantIsReady && !readyImagery[descendantLayerIndex]) {
+                        return false;
+                    }
+                }
+            } else if (lastFrameSelectionResult === TileSelectionResult.REFINED) {
+                stack.push(descendant.southwestChild, descendant.southeastChild, descendant.northwestChild, descendant.northeastChild);
+            }
+        }
+
+        return true;
+    }
+
     _onLayerAdded(layer: any, index: any) {
         if (layer.show) {
             const terrainProvider = this._terrainProvider;
@@ -837,6 +936,13 @@ export default class GlobeSurfaceTileProvider {
         }
 
         tileSet.push(tile);
+
+        const surfaceTile = tile.data as GlobeSurfaceTile;
+        if (!defined(surfaceTile.vertexArray)) {
+            this._hasFillTilesThisFrame = true;
+        } else {
+            this._hasLoadedTilesThisFrame = true;
+        }
 
         // const debug = this._debug;
         // ++debug.tilesRendered;
