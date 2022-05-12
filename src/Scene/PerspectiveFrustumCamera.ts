@@ -47,7 +47,7 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
         // this._far = this.far;
         // this._aspect = this.aspect;
 
-        this.up.set(0, 0, 1);
+        // this.up.set(0, 0, 1);
     }
 
     setSize(container: Element): void {

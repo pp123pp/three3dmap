@@ -170,8 +170,6 @@ export default class MapCamera {
      */
     maximumZoomFactor = 1.5;
 
-    private modeChanged = true;
-
     readonly moveStart = new Emit();
     readonly moveEnd = new Emit();
 
@@ -322,36 +320,21 @@ export default class MapCamera {
 
     get positionWC(): Cartesian3 {
         updateMembers(this);
-
-        aaaPositionWC.set(this._positionWC.z, this._positionWC.x, this._positionWC.y);
-
         return this._positionWC;
-        // return aaaPositionWC;
     }
 
     get directionWC(): Cartesian3 {
         updateMembers(this);
-
-        aaaDirectionWC.set(this._directionWC.z, this._directionWC.x, this._directionWC.y);
-
         return this._directionWC;
-
-        // return aaaDirectionWC;
     }
 
     get upWC(): Cartesian3 {
         updateMembers(this);
-
-        aaaUpWC.set(this._upWC.z, this._upWC.x, this._upWC.y);
-
         return this._upWC;
-        // return aaaUpWC;
     }
 
     get rightWC(): Cartesian3 {
         updateMembers(this);
-
-        aaaRightWC.set(this._rightWC.z, this._rightWC.x, this._rightWC.y);
         return this._rightWC;
     }
 
@@ -550,7 +533,7 @@ export default class MapCamera {
         let updateFrustum = false;
         if (mode !== this._mode) {
             this._mode = mode;
-            this.modeChanged = mode !== SceneMode.MORPHING;
+            this._modeChanged = mode !== SceneMode.MORPHING;
             updateFrustum = this._mode === SceneMode.SCENE2D;
         }
 
@@ -1327,19 +1310,16 @@ function convertTransformForColumbusView(camera: MapCamera) {
     Transforms.basisTo2D(camera._projection, camera._transform, camera._actualTransform);
 }
 
-const ssps = new Cartesian3();
 function updateViewMatrix(camera: MapCamera) {
-    // [camera._position.x, camera._position.y, camera._position.z] = [camera._position.z, camera._position.x, camera._position.y];
-
     CesiumMatrix4.computeView(camera._position, camera._direction, camera._up, camera._right, camera._viewMatrix);
     CesiumMatrix4.multiply(camera._viewMatrix, camera._actualInvTransform, camera._viewMatrix);
     CesiumMatrix4.inverseTransformation(camera._viewMatrix, camera._invViewMatrix);
 
     // CesiumMatrix4.transformToThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
 
-    // camera.frustum.matrixWorld.copy(camera._invViewMatrix);
+    camera.frustum.matrixWorld.copy(camera._invViewMatrix);
 
-    camera._invViewMatrix.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
+    camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
 
     // camera._invViewMatrix.decompose(ssps, camera.frustum.quaternion, camera.frustum.scale);
     // camera.frustum.position.set(ssps.z, ssps.x, ssps.y);
