@@ -45,6 +45,7 @@ Cartesian3.clone(cameraCV.up, camera.up);
 Cartesian3.cross(camera.direction, camera.up, camera.right);
 Cartesian3.normalize(camera.right, camera.right);
 
-// document.getElementById('btn').onclick = () => {
-//     console.log(camera.getPickRay(new Cartesian2(500, 500)));
-// };
+document.getElementById('btn').onclick = () => {
+    // console.log(camera.getPickRay(new Cartesian2(500, 500)));
+    camera.moveRight(10000000);
+};

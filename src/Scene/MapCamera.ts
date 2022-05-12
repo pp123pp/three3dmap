@@ -93,36 +93,38 @@ function getPickRayPerspective(camera: MapCamera, windowPosition: Cartesian2, re
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    const x = (windowPosition.x / width) * 2 - 1;
-    const y = -(windowPosition.y / height) * 2 + 1;
+    // const x = (windowPosition.x / width) * 2 - 1;
+    // const y = -(windowPosition.y / height) * 2 + 1;
 
-    result.origin.setFromMatrixPosition(camera.frustum.matrixWorld);
-    result.direction.set(x, y, 0.5).unproject(camera.frustum).sub(result.origin).normalize();
+    // result.origin.setFromMatrixPosition(camera.frustum.matrixWorld);
+    // result.direction.set(x, y, 0.5).unproject(camera.frustum).sub(result.origin).normalize();
 
-    // const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
-    // const tanTheta = camera.frustum.aspectRatio * tanPhi;
-    // const near = camera.frustum.near;
+    const tanPhi = Math.tan(MathUtils.degToRad(camera.frustum.fov) * 0.5);
+    const tanTheta = camera.frustum.aspectRatio * tanPhi;
+    const near = camera.frustum.near;
 
-    // const x = (2.0 / width) * windowPosition.x - 1.0;
-    // const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
+    const x = (2.0 / width) * windowPosition.x - 1.0;
+    const y = (2.0 / height) * (height - windowPosition.y) - 1.0;
 
-    // const position = camera.positionWC;
-    // Cartesian3.clone(position, result.origin);
+    const position = camera.positionWC;
+    Cartesian3.clone(position, result.origin);
 
-    // const nearCenter = Cartesian3.multiplyByScalar(camera.directionWC, near, pickPerspCenter);
-    // Cartesian3.add(position, nearCenter, nearCenter);
-    // const xDir = Cartesian3.multiplyByScalar(camera.rightWC, x * near * tanTheta, pickPerspXDir);
-    // const yDir = Cartesian3.multiplyByScalar(camera.upWC, y * near * tanPhi, pickPerspYDir);
-    // const direction = Cartesian3.add(nearCenter, xDir, result.direction);
-    // Cartesian3.add(direction, yDir, direction);
-    // Cartesian3.subtract(direction, position, direction);
-    // Cartesian3.normalize(direction, direction);
+    const nearCenter = Cartesian3.multiplyByScalar(camera.directionWC, near, pickPerspCenter);
+    Cartesian3.add(position, nearCenter, nearCenter);
+    const xDir = Cartesian3.multiplyByScalar(camera.rightWC, x * near * tanTheta, pickPerspXDir);
+    const yDir = Cartesian3.multiplyByScalar(camera.upWC, y * near * tanPhi, pickPerspYDir);
+    const direction = Cartesian3.add(nearCenter, xDir, result.direction);
+    Cartesian3.add(direction, yDir, direction);
+    Cartesian3.subtract(direction, position, direction);
+    Cartesian3.normalize(direction, direction);
 
     return result;
 }
 
 const aaaPositionWC = new Cartesian3();
-
+const aaaDirectionWC = new Cartesian3();
+const aaaUpWC = new Cartesian3();
+const aaaRightWC = new Cartesian3();
 export default class MapCamera {
     readonly scene: MapScene;
 
@@ -323,22 +325,33 @@ export default class MapCamera {
 
         aaaPositionWC.set(this._positionWC.z, this._positionWC.x, this._positionWC.y);
 
-        // return this._positionWC;
-        return aaaPositionWC;
+        return this._positionWC;
+        // return aaaPositionWC;
     }
 
     get directionWC(): Cartesian3 {
         updateMembers(this);
+
+        aaaDirectionWC.set(this._directionWC.z, this._directionWC.x, this._directionWC.y);
+
         return this._directionWC;
+
+        // return aaaDirectionWC;
     }
 
     get upWC(): Cartesian3 {
         updateMembers(this);
+
+        aaaUpWC.set(this._upWC.z, this._upWC.x, this._upWC.y);
+
         return this._upWC;
+        // return aaaUpWC;
     }
 
     get rightWC(): Cartesian3 {
         updateMembers(this);
+
+        aaaRightWC.set(this._rightWC.z, this._rightWC.x, this._rightWC.y);
         return this._rightWC;
     }
 

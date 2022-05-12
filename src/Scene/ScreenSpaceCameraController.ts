@@ -1047,6 +1047,9 @@ function zoomCV(controller: ScreenSpaceCameraController, startPosition: Cartesia
         movement = movement.distance;
     }
 
+    startPosition.x = 666;
+    startPosition.y = 510;
+
     const scene = controller.scene;
     const camera = scene.camera;
     const canvas = scene.canvas;
