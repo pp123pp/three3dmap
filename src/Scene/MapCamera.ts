@@ -21,7 +21,7 @@ import IntersectionTests from '@/Core/IntersectionTests';
 import Rectangle from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import Transforms from '@/Core/Transforms';
-import { Frustum, MathUtils, OrthographicCamera, Vector3 } from 'three';
+import { Frustum, MathUtils, Matrix4, OrthographicCamera, Vector3 } from 'three';
 import MapScene from './MapScene';
 import PerspectiveFrustumCamera from './PerspectiveFrustumCamera';
 
@@ -122,9 +122,8 @@ function getPickRayPerspective(camera: MapCamera, windowPosition: Cartesian2, re
 }
 
 const aaaPositionWC = new Cartesian3();
-const aaaDirectionWC = new Cartesian3();
+const aaaDirWC = new Cartesian3();
 const aaaUpWC = new Cartesian3();
-const aaaRightWC = new Cartesian3();
 export default class MapCamera {
     readonly scene: MapScene;
 
@@ -269,7 +268,9 @@ export default class MapCamera {
         Cartesian3.multiplyByScalar(this.position, mag, this.position);
     }
 
-    static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+    // static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+
+    static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 
     /**
      * The default rectangle the camera will view on creation.
@@ -321,16 +322,25 @@ export default class MapCamera {
     get positionWC(): Cartesian3 {
         updateMembers(this);
         return this._positionWC;
+
+        // aaaPositionWC.set(this._positionWC.y, this._positionWC.z, this._positionWC.x);
+        // return aaaPositionWC;
     }
 
     get directionWC(): Cartesian3 {
         updateMembers(this);
         return this._directionWC;
+
+        // aaaDirWC.set(this._directionWC.y, this._directionWC.z, this._directionWC.x);
+        // return aaaDirWC;
     }
 
     get upWC(): Cartesian3 {
         updateMembers(this);
         return this._upWC;
+
+        // aaaUpWC.set(this._upWC.y, this._upWC.z, this._upWC.x);
+        // return aaaUpWC;
     }
 
     get rightWC(): Cartesian3 {
@@ -387,18 +397,6 @@ export default class MapCamera {
         return roll;
     }
 
-    // get position(): Cartesian3 {
-    //     return this.frustum.position;
-    // }
-
-    // set position(value: Cartesian3) {
-    //     this.position.copy(value);
-    // }
-
-    // get positionCartographic(): Cartographic {
-    //     return this.scene.mapProjection.unproject(this.position, this._positionCartographic);
-    // }
-
     get sseDenominator(): number {
         return this.frustum.sseDenominator;
     }
@@ -406,14 +404,6 @@ export default class MapCamera {
     get cullingVolume(): CullingVolume {
         return this.frustum.cullingVolume;
     }
-
-    // get directionWC(): Cartesian3 {
-    //     return this.frustum.directionWC;
-    // }
-
-    // get upWC(): Cartesian3 {
-    //     return this.frustum.up;
-    // }
 
     /**
      * Sets the camera position, orientation and transform.

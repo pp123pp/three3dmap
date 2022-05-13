@@ -24,10 +24,14 @@ uniform vec4 u_tileRectangle;
 uniform vec3 rtc;
 varying vec3 v_textureCoordinates;
 
+
+
 float get2DGeographicYPositionFraction(vec2 textureCoordinates)
 {
     return textureCoordinates.y;
 }
+
+float get2DYPositionFraction(vec2 textureCoordinates) { return get2DGeographicYPositionFraction(textureCoordinates); }
 
 vec4 getPositionPlanarEarth(vec3 position, float height, vec2 textureCoordinates)
 {

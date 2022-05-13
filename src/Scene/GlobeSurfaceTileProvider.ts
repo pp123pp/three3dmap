@@ -307,7 +307,7 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         command.owner = tile;
 
         if (frameState.mode === SceneMode.COLUMBUS_VIEW) {
-            command.position.set(rtc.y, rtc.z, rtc.x);
+            command.position.set(rtc.z, rtc.x, rtc.y);
         } else if (frameState.mode === SceneMode.SCENE3D) {
             command.position.set(rtc.x, rtc.y, rtc.z);
         }

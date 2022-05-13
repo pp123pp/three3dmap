@@ -2642,7 +2642,7 @@ export default class ScreenSpaceCameraController {
     /**
      * @private
      */
-    update() {
+    update(): void {
         const scene = this.scene;
         const camera = scene.camera;
         const globe = scene.globe;
@@ -2703,7 +2703,7 @@ export default class ScreenSpaceCameraController {
      *
      * @see ScreenSpaceCameraController#destroy
      */
-    isDestroyed() {
+    isDestroyed(): boolean {
         return false;
     }
 

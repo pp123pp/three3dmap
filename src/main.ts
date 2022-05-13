@@ -30,27 +30,31 @@ scene.addObject(axesHelper);
 
 console.log(CesiumMatrix4.IDENTITY);
 
-// const cameraCV = {
-//     // position: new Cartesian3(-9183857.99044507, 3913084.3898019027, 12673564.865952782),
-//     // direction: new Cartesian3(1.3877787807814457e-17, -0.0005288903159823, -0.9999998601375071),
-//     // up: new Cartesian3(1.3877787807814457e-17, 0.9999998601375071, -0.0005288903159823),
+const cameraCV = {
+    position: new Cartesian3(-9183857.990445074, 3914472.0508939545, 25972529.261725195),
+    direction: new Cartesian3(3.72216724667275e-14, -0.0003113250666032521, -0.9999999515383503),
+    up: new Cartesian3(-4.609724166087824e-15, 0.9999999515383503, -0.0003113250666404997),
 
-//     position: new Cartesian3(307954.72494216013, 988789.7272943609, 58389654.904923),
-//     direction: new Cartesian3(-5.254929945916226e-34, -4.3715031594620883e-16, -1),
-//     up: new Cartesian3(2.2643562372348223e-16, 1, 8.812395257960106e-16),
-// };
-// Cartesian3.clone(cameraCV.position, camera.position);
-// Cartesian3.clone(cameraCV.direction, camera.direction);
-// Cartesian3.clone(cameraCV.up, camera.up);
-// Cartesian3.cross(camera.direction, camera.up, camera.right);
-// Cartesian3.normalize(camera.right, camera.right);
+    // position: new Cartesian3(307954.72494216013, 988789.7272943609, 58389654.904923),
+    // direction: new Cartesian3(-5.254929945916226e-34, -4.3715031594620883e-16, -1),
+    // up: new Cartesian3(2.2643562372348223e-16, 1, 8.812395257960106e-16),
 
-const ps = new Cartesian3(63916973.15163071, 3088494.933613418, 9994134.16404095);
-camera.setView({
-    destination: ps,
-});
+    // position: new Cartesian3(687742.1364813696, 982783.6276304201, 76618441.23662725),
+    // direction: new Cartesian3(-0.9999999515383509, -1.6653934375474782e-16, 0.00031132506472736354),
+    // up: new Cartesian3(0.00031132506472741905, -4.185174884594464e-13, 0.9999999515383509),
+};
 
 document.getElementById('btn').onclick = () => {
     // console.log(camera.getPickRay(new Cartesian2(500, 500)));
-    camera.moveRight(10000000);
+    // camera.moveRight(10000000);
+
+    camera.setView({
+        destination: cameraCV.position,
+        orientation: {
+            direction: cameraCV.direction,
+            up: cameraCV.up,
+        },
+    });
+
+    console.log(camera);
 };
