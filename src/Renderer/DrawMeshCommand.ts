@@ -35,6 +35,8 @@ export default class DrawMeshCommand extends Mesh {
         this.isDrawMeshCommand = true;
 
         this.frustumCulled = false;
+
+        this.frustumCulled = false;
     }
 
     get levelId() {

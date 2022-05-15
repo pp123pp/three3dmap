@@ -268,9 +268,11 @@ export default class MapCamera {
         Cartesian3.multiplyByScalar(this.position, mag, this.position);
     }
 
+    static TRANSFORM_2D = new CesiumMatrix4().fromArray([0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1]);
+
     // static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 
-    static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+    // static TRANSFORM_2D = new CesiumMatrix4().fromArray([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 
     /**
      * The default rectangle the camera will view on creation.
@@ -485,7 +487,7 @@ export default class MapCamera {
         scratchHpr.roll = defaultValue(orientation.roll, 0.0);
 
         if (mode === SceneMode.SCENE3D) {
-            // setView3D(this, destination, scratchHpr);
+            setView3D(this, destination, scratchHpr);
         } else if (mode === SceneMode.SCENE2D) {
             // setView2D(this, destination, scratchHpr, convert);
         } else {
@@ -1300,15 +1302,23 @@ function convertTransformForColumbusView(camera: MapCamera) {
     Transforms.basisTo2D(camera._projection, camera._transform, camera._actualTransform);
 }
 
+const aaaMat = new CesiumMatrix4();
+
 function updateViewMatrix(camera: MapCamera) {
     CesiumMatrix4.computeView(camera._position, camera._direction, camera._up, camera._right, camera._viewMatrix);
     CesiumMatrix4.multiply(camera._viewMatrix, camera._actualInvTransform, camera._viewMatrix);
+
     CesiumMatrix4.inverseTransformation(camera._viewMatrix, camera._invViewMatrix);
 
     // CesiumMatrix4.transformToThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
 
-    camera.frustum.matrixWorld.copy(camera._invViewMatrix);
+    CesiumMatrix4.inverseTransformation(MapCamera.TRANSFORM_2D, aaaMat);
 
+    CesiumMatrix4.multiply(aaaMat, camera._invViewMatrix, aaaMat);
+
+    // camera.frustum.matrixWorld.copy(camera._invViewMatrix);
+
+    camera.frustum.matrixWorld.copy(aaaMat);
     camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
 
     // camera._invViewMatrix.decompose(ssps, camera.frustum.quaternion, camera.frustum.scale);
@@ -1379,6 +1389,26 @@ function directionUpToHeadingPitchRoll(camera: MapCamera, position: Cartesian3, 
     result.roll = getRoll(direction, up, right);
 
     return result;
+}
+
+function setView3D(camera: MapCamera, position: Cartesian3, hpr: HeadingPitchRoll) {
+    const currentTransform = CesiumMatrix4.clone(camera.transform, scratchSetViewTransform1);
+    const localTransform = (Transforms as any).eastNorthUpToFixedFrame(position, camera._projection.ellipsoid, scratchSetViewTransform2);
+    camera._setTransform(localTransform);
+
+    Cartesian3.clone(Cartesian3.ZERO, camera.position);
+    hpr.heading = hpr.heading - CesiumMath.PI_OVER_TWO;
+
+    const rotQuat = CesiumQuaternion.fromHeadingPitchRoll(hpr, scratchSetViewQuaternion);
+    const rotMat = CesiumMatrix3.fromQuaternion(rotQuat, scratchSetViewMatrix3);
+
+    CesiumMatrix3.getColumn(rotMat, 0, camera.direction);
+    CesiumMatrix3.getColumn(rotMat, 2, camera.up);
+    Cartesian3.cross(camera.direction, camera.up, camera.right);
+
+    camera._setTransform(currentTransform);
+
+    camera._adjustOrthographicFrustum(true);
 }
 
 function setViewCV(camera: MapCamera, position: Cartesian3, hpr: HeadingPitchRoll, convert: boolean) {

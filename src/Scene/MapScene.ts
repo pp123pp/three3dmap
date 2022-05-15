@@ -269,6 +269,8 @@ export default class MapScene extends Scene {
         this._globe = new Globe(ellipsoid);
 
         this.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
+
+        this.frustumCulled = false;
     }
 
     get camera(): MapCamera {
