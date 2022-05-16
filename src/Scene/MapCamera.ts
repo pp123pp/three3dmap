@@ -1336,8 +1336,11 @@ function updateViewMatrix(camera: MapCamera) {
     CesiumMatrix4.inverseTransformation(camera._actualTransform, aaaMat);
     CesiumMatrix4.multiply(aaaMat, camera._invViewMatrix, aaaMat);
 
+    // camera.frustum.rotation.set(camera._direction.x, camera._direction.y, camera._direction.z);
+    // camera.frustum.up.copy(camera._up);
+    // camera.frustum.position.copy(camera._position);
+
     camera.frustum.matrixWorld.copy(aaaMat);
-    // camera.frustum.updateMatrixWorld();
     camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
 }
 

@@ -40,6 +40,9 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
     // 使用经纬度表示的坐标
     _positionCartographic = new Cartographic();
     _frustum = new CullingVolume();
+
+    _cullingVolume = new CullingVolume();
+
     constructor(options: IMapCamera) {
         super(options.fov, options.aspect, options.near, options.far);
         // this._fovRadius = this.fovRadius;
@@ -114,5 +117,135 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
 
     set aspectRatio(value: number) {
         this.aspect = value;
+    }
+
+    /**
+     * Creates a culling volume for this frustum.
+     *
+     * @param {Cartesian3} position The eye position.
+     * @param {Cartesian3} direction The view direction.
+     * @param {Cartesian3} up The up direction.
+     * @returns {CullingVolume} A culling volume at the given position and orientation.
+     *
+     * @example
+     * // Check if a bounding volume intersects the frustum.
+     * const cullingVolume = frustum.computeCullingVolume(cameraPosition, cameraDirection, cameraUp);
+     * const intersect = cullingVolume.computeVisibility(boundingVolume);
+     */
+    computeCullingVolume(position: Cartesian3, direction: Cartesian3, up: Cartesian3): CullingVolume {
+        update(this);
+        return this._offCenterFrustumComputeCullingVolume(position, direction, up);
+    }
+
+    _offCenterFrustumComputeCullingVolume(position, direction, up) {
+        const planes = this._cullingVolume.planes;
+
+        const t = this.top;
+        const b = this.bottom;
+        const r = this.right;
+        const l = this.left;
+        const n = this.near;
+        const f = this.far;
+
+        const right = Cartesian3.cross(direction, up, getPlanesRight);
+
+        const nearCenter = getPlanesNearCenter;
+        Cartesian3.multiplyByScalar(direction, n, nearCenter);
+        Cartesian3.add(position, nearCenter, nearCenter);
+
+        const farCenter = getPlanesFarCenter;
+        Cartesian3.multiplyByScalar(direction, f, farCenter);
+        Cartesian3.add(position, farCenter, farCenter);
+
+        const normal = getPlanesNormal;
+
+        //Left plane computation
+        Cartesian3.multiplyByScalar(right, l, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.normalize(normal, normal);
+        Cartesian3.cross(normal, up, normal);
+        Cartesian3.normalize(normal, normal);
+
+        let plane = planes[0];
+        if (!defined(plane)) {
+            plane = planes[0] = new Cartesian4();
+        }
+        plane.x = normal.x;
+        plane.y = normal.y;
+        plane.z = normal.z;
+        plane.w = -Cartesian3.dot(normal, position);
+
+        //Right plane computation
+        Cartesian3.multiplyByScalar(right, r, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.cross(up, normal, normal);
+        Cartesian3.normalize(normal, normal);
+
+        plane = planes[1];
+        if (!defined(plane)) {
+            plane = planes[1] = new Cartesian4();
+        }
+        plane.x = normal.x;
+        plane.y = normal.y;
+        plane.z = normal.z;
+        plane.w = -Cartesian3.dot(normal, position);
+
+        //Bottom plane computation
+        Cartesian3.multiplyByScalar(up, b, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.cross(right, normal, normal);
+        Cartesian3.normalize(normal, normal);
+
+        plane = planes[2];
+        if (!defined(plane)) {
+            plane = planes[2] = new Cartesian4();
+        }
+        plane.x = normal.x;
+        plane.y = normal.y;
+        plane.z = normal.z;
+        plane.w = -Cartesian3.dot(normal, position);
+
+        //Top plane computation
+        Cartesian3.multiplyByScalar(up, t, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.cross(normal, right, normal);
+        Cartesian3.normalize(normal, normal);
+
+        plane = planes[3];
+        if (!defined(plane)) {
+            plane = planes[3] = new Cartesian4();
+        }
+        plane.x = normal.x;
+        plane.y = normal.y;
+        plane.z = normal.z;
+        plane.w = -Cartesian3.dot(normal, position);
+
+        //Near plane computation
+        plane = planes[4];
+        if (!defined(plane)) {
+            plane = planes[4] = new Cartesian4();
+        }
+        plane.x = direction.x;
+        plane.y = direction.y;
+        plane.z = direction.z;
+        plane.w = -Cartesian3.dot(direction, nearCenter);
+
+        //Far plane computation
+        Cartesian3.negate(direction, normal);
+
+        plane = planes[5];
+        if (!defined(plane)) {
+            plane = planes[5] = new Cartesian4();
+        }
+        plane.x = normal.x;
+        plane.y = normal.y;
+        plane.z = normal.z;
+        plane.w = -Cartesian3.dot(normal, farCenter);
+
+        return this._cullingVolume;
     }
 }

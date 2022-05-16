@@ -5,6 +5,7 @@ import Cartographic from './Cartographic';
 import CesiumPlane from './CesiumPlane';
 import CesiumRay from './CesiumRay';
 import { defaultValue } from './defaultValue';
+import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 import IntersectionTests from './IntersectionTests';
 import OrientedBoundingBox from './OrientedBoundingBox';
@@ -61,8 +62,8 @@ const computeBox = function computeBox(tileBB: TileBoundingRegion, rectangle: Re
         // Compute a plane that doesn't cut through the tile.
         cartographicScratch.longitude = (rectangle.west + rectangle.east) * 0.5;
         cartographicScratch.latitude = south;
-        const southCenterCartesian = ellipsoid.cartographicToCartesian(cartographicScratch, rayScratch.origin);
-        Cartesian3.clone(eastWestNormal, rayScratch.direction);
+        const southCenterCartesian = ellipsoid.cartographicToCartesian(cartographicScratch, rayScratch.origin as any);
+        Cartesian3.clone(eastWestNormal, rayScratch.direction as any);
         const westPlane = CesiumPlane.fromPointNormal(tileBB.southwestCornerCartesian, tileBB.westNormal, planeScratch);
         // Find a point that is on the west and the south planes
         IntersectionTests.rayPlane(rayScratch, westPlane, tileBB.southwestCornerCartesian);
@@ -199,69 +200,87 @@ class TileBoundingRegion {
      * @returns {Number} The distance from the camera to the closest point on the tile, in meters.
      */
     distanceToCamera(frameState: FrameState): number {
-        const camera = frameState.camera;
-        const cameraCartesianPosition = camera.positionWC;
-        const cameraCartographicPosition = camera.positionCartographic;
-
-        let result = 0.0;
-        if (!Rectangle.contains(this.rectangle, cameraCartographicPosition)) {
-            let southwestCornerCartesian = this.southwestCornerCartesian;
-            let northeastCornerCartesian = this.northeastCornerCartesian;
-            let westNormal = this.westNormal;
-            let southNormal = this.southNormal;
-            let eastNormal = this.eastNormal;
-            let northNormal = this.northNormal;
-
-            if (frameState.mode !== SceneMode.SCENE3D) {
-                southwestCornerCartesian = frameState.mapProjection.project(Rectangle.southwest(this.rectangle), southwestCornerScratch);
-                southwestCornerCartesian.z = southwestCornerCartesian.y;
-                southwestCornerCartesian.y = southwestCornerCartesian.x;
-                southwestCornerCartesian.x = 0.0;
-                northeastCornerCartesian = frameState.mapProjection.project(Rectangle.northeast(this.rectangle), northeastCornerScratch);
-                northeastCornerCartesian.z = northeastCornerCartesian.y;
-                northeastCornerCartesian.y = northeastCornerCartesian.x;
-                northeastCornerCartesian.x = 0.0;
-                westNormal = negativeUnitY;
-                eastNormal = Cartesian3.UNIT_Y;
-                southNormal = negativeUnitZ;
-                northNormal = Cartesian3.UNIT_Z;
-            }
-
-            const vectorFromSouthwestCorner = Cartesian3.subtract(cameraCartesianPosition, southwestCornerCartesian, vectorScratch);
-            const distanceToWestPlane = Cartesian3.dot(vectorFromSouthwestCorner, westNormal);
-            const distanceToSouthPlane = Cartesian3.dot(vectorFromSouthwestCorner, southNormal);
-
-            const vectorFromNortheastCorner = Cartesian3.subtract(cameraCartesianPosition, northeastCornerCartesian, vectorScratch);
-            const distanceToEastPlane = Cartesian3.dot(vectorFromNortheastCorner, eastNormal);
-            const distanceToNorthPlane = Cartesian3.dot(vectorFromNortheastCorner, northNormal);
-
-            if (distanceToWestPlane > 0.0) {
-                result += distanceToWestPlane * distanceToWestPlane;
-            } else if (distanceToEastPlane > 0.0) {
-                result += distanceToEastPlane * distanceToEastPlane;
-            }
-
-            if (distanceToSouthPlane > 0.0) {
-                result += distanceToSouthPlane * distanceToSouthPlane;
-            } else if (distanceToNorthPlane > 0.0) {
-                result += distanceToNorthPlane * distanceToNorthPlane;
-            }
+        const regionResult = distanceToCameraRegion(this, frameState);
+        if (frameState.mode === SceneMode.SCENE3D && defined(this._orientedBoundingBox)) {
+            const obbResult = Math.sqrt(this._orientedBoundingBox.distanceSquaredTo(frameState.camera.positionWC));
+            return Math.max(regionResult, obbResult);
         }
-        let cameraHeight;
-        if (frameState.mode === SceneMode.SCENE3D) {
-            cameraHeight = cameraCartographicPosition.height;
-        } else {
-            cameraHeight = Math.abs(cameraCartesianPosition.x);
-        }
-
-        const maximumHeight = frameState.mode === SceneMode.SCENE3D ? this.maximumHeight : 0.0;
-        const distanceFromTop = cameraHeight - maximumHeight;
-        if (distanceFromTop > 0.0) {
-            result += distanceFromTop * distanceFromTop;
-        }
-
-        return Math.sqrt(result);
+        return regionResult;
     }
+}
+
+function distanceToCameraRegion(tileBB: TileBoundingRegion, frameState: FrameState) {
+    const camera = frameState.camera;
+    const cameraCartesianPosition = camera.positionWC;
+    const cameraCartographicPosition = camera.positionCartographic;
+
+    let result = 0.0;
+    if (!Rectangle.contains(tileBB.rectangle, cameraCartographicPosition)) {
+        let southwestCornerCartesian = tileBB.southwestCornerCartesian;
+        let northeastCornerCartesian = tileBB.northeastCornerCartesian;
+        let westNormal = tileBB.westNormal;
+        let southNormal = tileBB.southNormal;
+        let eastNormal = tileBB.eastNormal;
+        let northNormal = tileBB.northNormal;
+
+        if (frameState.mode !== SceneMode.SCENE3D) {
+            southwestCornerCartesian = frameState.mapProjection.project(Rectangle.southwest(tileBB.rectangle), southwestCornerScratch);
+            southwestCornerCartesian.z = southwestCornerCartesian.y;
+            southwestCornerCartesian.y = southwestCornerCartesian.x;
+            southwestCornerCartesian.x = 0.0;
+            northeastCornerCartesian = frameState.mapProjection.project(Rectangle.northeast(tileBB.rectangle), northeastCornerScratch);
+            northeastCornerCartesian.z = northeastCornerCartesian.y;
+            northeastCornerCartesian.y = northeastCornerCartesian.x;
+            northeastCornerCartesian.x = 0.0;
+            westNormal = negativeUnitY;
+            eastNormal = Cartesian3.UNIT_Y;
+            southNormal = negativeUnitZ;
+            northNormal = Cartesian3.UNIT_Z;
+        }
+
+        const vectorFromSouthwestCorner = Cartesian3.subtract(cameraCartesianPosition, southwestCornerCartesian, vectorScratch);
+        const distanceToWestPlane = Cartesian3.dot(vectorFromSouthwestCorner, westNormal);
+        const distanceToSouthPlane = Cartesian3.dot(vectorFromSouthwestCorner, southNormal);
+
+        const vectorFromNortheastCorner = Cartesian3.subtract(cameraCartesianPosition, northeastCornerCartesian, vectorScratch);
+        const distanceToEastPlane = Cartesian3.dot(vectorFromNortheastCorner, eastNormal);
+        const distanceToNorthPlane = Cartesian3.dot(vectorFromNortheastCorner, northNormal);
+
+        if (distanceToWestPlane > 0.0) {
+            result += distanceToWestPlane * distanceToWestPlane;
+        } else if (distanceToEastPlane > 0.0) {
+            result += distanceToEastPlane * distanceToEastPlane;
+        }
+
+        if (distanceToSouthPlane > 0.0) {
+            result += distanceToSouthPlane * distanceToSouthPlane;
+        } else if (distanceToNorthPlane > 0.0) {
+            result += distanceToNorthPlane * distanceToNorthPlane;
+        }
+    }
+
+    let cameraHeight;
+    let minimumHeight;
+    let maximumHeight;
+    if (frameState.mode === SceneMode.SCENE3D) {
+        cameraHeight = cameraCartographicPosition.height;
+        minimumHeight = tileBB.minimumHeight;
+        maximumHeight = tileBB.maximumHeight;
+    } else {
+        cameraHeight = cameraCartesianPosition.x;
+        minimumHeight = 0.0;
+        maximumHeight = 0.0;
+    }
+
+    if (cameraHeight > maximumHeight) {
+        const distanceAboveTop = cameraHeight - maximumHeight;
+        result += distanceAboveTop * distanceAboveTop;
+    } else if (cameraHeight < minimumHeight) {
+        const distanceBelowBottom = minimumHeight - cameraHeight;
+        result += distanceBelowBottom * distanceBelowBottom;
+    }
+
+    return Math.sqrt(result);
 }
 
 export { TileBoundingRegion };

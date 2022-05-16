@@ -514,6 +514,20 @@ export default class Cartesian3 extends Vector3 {
         const sine = Cartesian3.magnitude(Cartesian3.cross(angleBetweenScratch, angleBetweenScratch2, angleBetweenScratch));
         return Math.atan2(sine, cosine);
     }
+
+    // /**
+    //  * Compares this Cartesian against the provided Cartesian componentwise and returns
+    //  * <code>true</code> if they pass an absolute or relative tolerance test,
+    //  * <code>false</code> otherwise.
+    //  *
+    //  * @param {Cartesian3} [right] The right hand side Cartesian.
+    //  * @param {Number} [relativeEpsilon=0] The relative epsilon tolerance to use for equality testing.
+    //  * @param {Number} [absoluteEpsilon=relativeEpsilon] The absolute epsilon tolerance to use for equality testing.
+    //  * @returns {Boolean} <code>true</code> if they are within the provided epsilon, <code>false</code> otherwise.
+    //  */
+    // equalsEpsilon(right?: Cartesian3, relativeEpsilon = 0, absoluteEpsilon?: number): boolean {
+    //     return Cartesian3.equalsEpsilon(this, right, relativeEpsilon, absoluteEpsilon);
+    // }
 }
 
 const distanceScratch = new Cartesian3();

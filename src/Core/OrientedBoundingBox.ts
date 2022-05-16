@@ -23,6 +23,13 @@ const scratchEigenResult = {
     diagonal: new CesiumMatrix3(),
 };
 
+const scratchCartesianU = new Cartesian3();
+const scratchCartesianV = new Cartesian3();
+const scratchCartesianW = new Cartesian3();
+const scratchValidAxis2 = new Cartesian3();
+const scratchValidAxis3 = new Cartesian3();
+const scratchPPrime = new Cartesian3();
+
 const scratchOffset = new Cartesian3();
 const scratchScale = new Cartesian3();
 function fromPlaneExtents(planeOrigin: Cartesian3, planeXAxis: Cartesian3, planeYAxis: Cartesian3, planeZAxis: Cartesian3, minimumX: number, maximumX: number, minimumY: number, maximumY: number, minimumZ: number, maximumZ: number, result = new OrientedBoundingBox()) {
@@ -300,5 +307,178 @@ export default class OrientedBoundingBox {
 
         // min and max are local to the plane axes
         return fromPlaneExtents(planeOrigin, planeXAxis, planeYAxis, planeNormal, minX, maxX, minY, maxY, minZ, maxZ, result);
+    }
+
+    /**
+     * Computes the estimated distance squared from the closest point on a bounding box to a point.
+     *
+     * @param {Cartesian3} cartesian The point
+     * @returns {Number} The estimated distance squared from the bounding sphere to the point.
+     *
+     * @example
+     * // Sort bounding boxes from back to front
+     * boxes.sort(function(a, b) {
+     *     return b.distanceSquaredTo(camera.positionWC) - a.distanceSquaredTo(camera.positionWC);
+     * });
+     */
+    distanceSquaredTo(cartesian: Cartesian3): number {
+        return OrientedBoundingBox.distanceSquaredTo(this, cartesian);
+    }
+
+    /**
+     * Computes the estimated distance squared from the closest point on a bounding box to a point.
+     *
+     * @param {OrientedBoundingBox} box The box.
+     * @param {Cartesian3} cartesian The point
+     * @returns {Number} The distance squared from the oriented bounding box to the point. Returns 0 if the point is inside the box.
+     *
+     * @example
+     * // Sort bounding boxes from back to front
+     * boxes.sort(function(a, b) {
+     *     return Cesium.OrientedBoundingBox.distanceSquaredTo(b, camera.positionWC) - Cesium.OrientedBoundingBox.distanceSquaredTo(a, camera.positionWC);
+     * });
+     */
+    static distanceSquaredTo(box: OrientedBoundingBox, cartesian: Cartesian3): number {
+        // See Geometric Tools for Computer Graphics 10.4.2
+
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(box)) {
+            throw new DeveloperError('box is required.');
+        }
+        if (!defined(cartesian)) {
+            throw new DeveloperError('cartesian is required.');
+        }
+        //>>includeEnd('debug');
+
+        const offset = Cartesian3.subtract(cartesian, box.center, scratchOffset);
+
+        const halfAxes = box.halfAxes;
+        let u = CesiumMatrix3.getColumn(halfAxes, 0, scratchCartesianU);
+        let v = CesiumMatrix3.getColumn(halfAxes, 1, scratchCartesianV);
+        let w = CesiumMatrix3.getColumn(halfAxes, 2, scratchCartesianW);
+
+        const uHalf = Cartesian3.magnitude(u);
+        const vHalf = Cartesian3.magnitude(v);
+        const wHalf = Cartesian3.magnitude(w);
+
+        let uValid = true;
+        let vValid = true;
+        let wValid = true;
+
+        if (uHalf > 0) {
+            Cartesian3.divideByScalar(u, uHalf, u);
+        } else {
+            uValid = false;
+        }
+
+        if (vHalf > 0) {
+            Cartesian3.divideByScalar(v, vHalf, v);
+        } else {
+            vValid = false;
+        }
+
+        if (wHalf > 0) {
+            Cartesian3.divideByScalar(w, wHalf, w);
+        } else {
+            wValid = false;
+        }
+
+        const numberOfDegenerateAxes = (!uValid as any) + !vValid + !wValid;
+        let validAxis1;
+        let validAxis2;
+        let validAxis3;
+
+        if (numberOfDegenerateAxes === 1) {
+            let degenerateAxis = u;
+            validAxis1 = v;
+            validAxis2 = w;
+            if (!vValid) {
+                degenerateAxis = v;
+                validAxis1 = u;
+            } else if (!wValid) {
+                degenerateAxis = w;
+                validAxis2 = u;
+            }
+
+            validAxis3 = Cartesian3.cross(validAxis1, validAxis2, scratchValidAxis3);
+
+            if (degenerateAxis === u) {
+                u = validAxis3;
+            } else if (degenerateAxis === v) {
+                v = validAxis3;
+            } else if (degenerateAxis === w) {
+                w = validAxis3;
+            }
+        } else if (numberOfDegenerateAxes === 2) {
+            validAxis1 = u;
+            if (vValid) {
+                validAxis1 = v;
+            } else if (wValid) {
+                validAxis1 = w;
+            }
+
+            let crossVector = Cartesian3.UNIT_Y;
+            // if (crossVector.equalsEpsilon(validAxis1, CesiumMath.EPSILON3)) {
+            //     crossVector = Cartesian3.UNIT_X;
+            // }
+
+            if (Cartesian3.equalsEpsilon(crossVector, validAxis1, CesiumMath.EPSILON3)) {
+                crossVector = Cartesian3.UNIT_X;
+            }
+
+            validAxis2 = Cartesian3.cross(validAxis1, crossVector, scratchValidAxis2);
+            Cartesian3.normalize(validAxis2, validAxis2);
+            validAxis3 = Cartesian3.cross(validAxis1, validAxis2, scratchValidAxis3);
+            Cartesian3.normalize(validAxis3, validAxis3);
+
+            if (validAxis1 === u) {
+                v = validAxis2;
+                w = validAxis3;
+            } else if (validAxis1 === v) {
+                w = validAxis2;
+                u = validAxis3;
+            } else if (validAxis1 === w) {
+                u = validAxis2;
+                v = validAxis3;
+            }
+        } else if (numberOfDegenerateAxes === 3) {
+            u = Cartesian3.UNIT_X;
+            v = Cartesian3.UNIT_Y;
+            w = Cartesian3.UNIT_Z;
+        }
+
+        const pPrime = scratchPPrime;
+        pPrime.x = Cartesian3.dot(offset, u);
+        pPrime.y = Cartesian3.dot(offset, v);
+        pPrime.z = Cartesian3.dot(offset, w);
+
+        let distanceSquared = 0.0;
+        let d;
+
+        if (pPrime.x < -uHalf) {
+            d = pPrime.x + uHalf;
+            distanceSquared += d * d;
+        } else if (pPrime.x > uHalf) {
+            d = pPrime.x - uHalf;
+            distanceSquared += d * d;
+        }
+
+        if (pPrime.y < -vHalf) {
+            d = pPrime.y + vHalf;
+            distanceSquared += d * d;
+        } else if (pPrime.y > vHalf) {
+            d = pPrime.y - vHalf;
+            distanceSquared += d * d;
+        }
+
+        if (pPrime.z < -wHalf) {
+            d = pPrime.z + wHalf;
+            distanceSquared += d * d;
+        } else if (pPrime.z > wHalf) {
+            d = pPrime.z - wHalf;
+            distanceSquared += d * d;
+        }
+
+        return distanceSquared;
     }
 }
