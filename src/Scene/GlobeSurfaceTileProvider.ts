@@ -177,6 +177,72 @@ let debugDestroyPrimitive: any;
     };
 })();
 
+// function createTileUniformMap(frameState, globeSurfaceTileProvider) {
+//     const uniformMap = {
+//         // make a separate object so that changes to the properties are seen on
+//         // derived commands that combine another uniform map with this one.
+//         properties: {
+//             initialColor: new Cartesian4(0.0, 0.0, 0.5, 1.0),
+//             fillHighlightColor: new Color(0.0, 0.0, 0.0, 0.0),
+//             zoomedOutOceanSpecularIntensity: 0.5,
+//             oceanNormalMap: undefined,
+//             lightingFadeDistance: new Cartesian2(6500000.0, 9000000.0),
+//             nightFadeDistance: new Cartesian2(10000000.0, 40000000.0),
+//             hsbShift: new Cartesian3(),
+
+//             center3D: undefined,
+//             rtc: new Cartesian3(),
+//             modifiedModelView: new Matrix4(),
+//             tileRectangle: new Cartesian4(),
+
+//             terrainExaggerationAndRelativeHeight: new Cartesian2(1.0, 0.0),
+
+//             dayTextures: [],
+//             dayTextureTranslationAndScale: [],
+//             dayTextureTexCoordsRectangle: [],
+//             dayTextureUseWebMercatorT: [],
+//             dayTextureAlpha: [],
+//             dayTextureNightAlpha: [],
+//             dayTextureDayAlpha: [],
+//             dayTextureBrightness: [],
+//             dayTextureContrast: [],
+//             dayTextureHue: [],
+//             dayTextureSaturation: [],
+//             dayTextureOneOverGamma: [],
+//             dayTextureSplit: [],
+//             dayTextureCutoutRectangles: [],
+//             dayIntensity: 0.0,
+//             colorsToAlpha: [],
+
+//             southAndNorthLatitude: new Cartesian2(),
+//             southMercatorYAndOneOverHeight: new Cartesian2(),
+
+//             waterMask: undefined,
+//             waterMaskTranslationAndScale: new Cartesian4(),
+
+//             minMaxHeight: new Cartesian2(),
+//             scaleAndBias: new Matrix4(),
+//             clippingPlanesEdgeColor: Color.clone(Color.WHITE),
+//             clippingPlanesEdgeWidth: 0.0,
+
+//             localizedCartographicLimitRectangle: new Cartesian4(),
+
+//             frontFaceAlphaByDistance: new Cartesian4(),
+//             backFaceAlphaByDistance: new Cartesian4(),
+//             localizedTranslucencyRectangle: new Cartesian4(),
+//             undergroundColor: Color.clone(Color.TRANSPARENT),
+//             undergroundColorAlphaByDistance: new Cartesian4(),
+//             lambertDiffuseMultiplier: 0.0,
+//         },
+//     };
+
+//     if (defined(globeSurfaceTileProvider.materialUniformMap)) {
+//         return combine(uniformMap, globeSurfaceTileProvider.materialUniformMap);
+//     }
+
+//     return uniformMap;
+// }
+
 const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameState) => {
     const surfaceTile = tile.data;
 
@@ -227,8 +293,6 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
     const surfaceShaderSetOptions = surfaceShaderSetOptionsScratch;
     surfaceShaderSetOptions.frameState = frameState;
     surfaceShaderSetOptions.surfaceTile = surfaceTile;
-
-    // const quantization = surfaceTile.pickTerrain.mesh.encoding.quantization;
 
     const quantization = encoding.quantization;
     surfaceShaderSetOptions.enableLighting = tileProvider.enableLighting;
@@ -348,7 +412,9 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
         //     frameState.commandList.push(sphere);
         // }
 
-        frameState.commandList.push(command);
+        if (dayTextureTranslationAndScale.length > 0) {
+            frameState.commandList.push(command);
+        }
 
         // if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length) {
         //     debugger;

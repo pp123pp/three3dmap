@@ -66,11 +66,19 @@ gui.add(params, 'moveUp').onChange(() => {
 
     // camera.position.set(0, 0, 55972529.261725195);
     // console.log(camera);
+    // camera.setView({
+    //     destination: new Cartesian3(0, 0, 4972529.261725195),
+    //     orientation: {
+    //         direction: new Cartesian3(0, 0, -1),
+    //         up: new Cartesian3(0, 1, 0),
+    //     },
+    // });
+
     camera.setView({
-        destination: new Cartesian3(0, 0, 105972529.261725195),
+        destination: new Cartesian3(-3156628.5243760087, 2382657.264821483, 6.45336975203827),
         orientation: {
-            direction: new Cartesian3(0, 0, -1),
-            up: new Cartesian3(0, 1, 0),
+            direction: new Cartesian3(0.528925477468187, 0.8401841477579277, -0.11970145003856583),
+            up: new Cartesian3(0.06377166919610217, 0.10129961179242912, 0.992809932896849),
         },
     });
     console.log(camera);
@@ -78,5 +86,9 @@ gui.add(params, 'moveUp').onChange(() => {
 
 gui.add(params, 'moveRight').onChange(() => {
     // camera.position.set(0, 0, 55972529.261725195);
-    // console.log(camera);
+    console.log(camera);
+});
+
+camera.changed.addEventListener(() => {
+    console.log('aaa');
 });

@@ -16,6 +16,7 @@ import Ellipsoid from '@/Core/Ellipsoid';
 import EllipsoidGeodesic from '@/Core/EllipsoidGeodesic';
 import Emit from '@/Core/Emit';
 import { GeographicProjection } from '@/Core/GeographicProjection';
+import { getTimestamp } from '@/Core/getTimestamp';
 import { HeadingPitchRoll } from '@/Core/HeadingPitchRoll';
 import IntersectionTests from '@/Core/IntersectionTests';
 import Rectangle from '@/Core/Rectangle';
@@ -169,11 +170,29 @@ export default class MapCamera {
      */
     maximumZoomFactor = 1.5;
 
+    /**
+     * The position delta magnitude.
+     *
+     * @private
+     */
+    positionWCDeltaMagnitude = 0.0;
+
+    /**
+     * The position delta magnitude last frame.
+     *
+     * @private
+     */
+    positionWCDeltaMagnitudeLastFrame = 0.0;
+
     readonly moveStart = new Emit();
     readonly moveEnd = new Emit();
 
     readonly changed = new Emit();
 
+    _changedPosition: Vector3 = undefined as any;
+    _changedDirection: Vector3 = undefined as any;
+    _changedFrustum = undefined;
+    _changedHeading: number = undefined as any;
     /**
      * The amount the camera has to change before the <code>changed</code> event is raised. The value is a percentage in the [0, 1] range.
      * @type {number}
@@ -191,10 +210,6 @@ export default class MapCamera {
     timeSinceMoved = 0.0;
     _lastMovedTimestamp = 0.0;
 
-    _changedPosition?: Vector3 = undefined;
-    _changedDirection?: Vector3 = undefined;
-    _changedFrustum = undefined;
-
     /**
      * The position of the camera.
      *
@@ -204,7 +219,7 @@ export default class MapCamera {
     _position = new Cartesian3();
     _positionWC = new Cartesian3();
     _positionCartographic = new Cartographic();
-    _oldPositionWC?: Cartesian3;
+    _oldPositionWC: Cartesian3 = undefined as any;
     _sseDenominator?: number;
 
     _transform = CesiumMatrix4.clone(CesiumMatrix4.IDENTITY);
@@ -270,7 +285,7 @@ export default class MapCamera {
 
     static TRANSFORM_2D = new CesiumMatrix4().fromArray([0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1]);
 
-    // static TRANSFORM_2D = new CesiumMatrix4().fromArray([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
+    // static TRANSFORM_2D = new CesiumMatrix4().fromArray([0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, -0, -0, -0]);
 
     // static TRANSFORM_2D = new CesiumMatrix4().fromArray([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]);
 
@@ -491,7 +506,7 @@ export default class MapCamera {
         } else if (mode === SceneMode.SCENE2D) {
             // setView2D(this, destination, scratchHpr, convert);
         } else {
-            setViewCV(this, destination, scratchHpr, convert);
+            setViewCV(this, destination, scratchHpr, false);
         }
     }
 
@@ -539,31 +554,57 @@ export default class MapCamera {
     }
 
     _updateCameraChanged(): void {
-        // const camera = this;
-        // updateCameraDeltas(camera);
-        // if (camera.changed.numberOfListeners === 0) {
-        //     return;
-        // }
-        // const percentageChanged = camera.percentageChanged;
-        // if (!defined(camera._changedDirection)) {
-        //     camera._changedPosition = Cartesian3.clone(camera.positionWC, camera._changedPosition);
-        //     camera._changedDirection = Cartesian3.clone(camera.directionWC, camera._changedDirection);
-        //     return;
-        // }
-        // const dirAngle = CesiumMath.acosClamped(Cartesian3.dot(camera.directionWC, camera._changedDirection));
-        // let dirPercentage;
-        // if (defined(camera.frustum.fovy)) {
-        //     dirPercentage = dirAngle / (camera.frustum.fovy * 0.5);
-        // } else {
-        //     dirPercentage = dirAngle;
-        // }
-        // const distance = Cartesian3.distance(camera.positionWC, camera._changedPosition);
-        // const heightPercentage = distance / camera.positionCartographic.height;
-        // if (dirPercentage > percentageChanged || heightPercentage > percentageChanged) {
-        //     camera.changed.raiseEvent(Math.max(dirPercentage, heightPercentage));
-        //     camera._changedPosition = Cartesian3.clone(camera.positionWC, camera._changedPosition);
-        //     camera._changedDirection = Cartesian3.clone(camera.directionWC, camera._changedDirection);
-        // }
+        const camera = this;
+
+        updateCameraDeltas(camera);
+
+        if (camera.changed.numberOfListeners === 0) {
+            return;
+        }
+
+        const percentageChanged = camera.percentageChanged;
+
+        const currentHeading = camera.heading;
+
+        if (!defined(camera._changedHeading)) {
+            camera._changedHeading = currentHeading;
+        }
+
+        let delta = Math.abs(camera._changedHeading - currentHeading) % CesiumMath.TWO_PI;
+        delta = delta > CesiumMath.PI ? CesiumMath.TWO_PI - delta : delta;
+
+        // Since delta is computed as the shortest distance between two angles
+        // the percentage is relative to the half circle.
+        const headingChangedPercentage = delta / Math.PI;
+
+        if (headingChangedPercentage > percentageChanged) {
+            camera.changed.raiseEvent(headingChangedPercentage);
+            camera._changedHeading = currentHeading;
+        }
+
+        if (!defined(camera._changedDirection)) {
+            camera._changedPosition = Cartesian3.clone(camera.positionWC, camera._changedPosition);
+            camera._changedDirection = Cartesian3.clone(camera.directionWC, camera._changedDirection);
+            return;
+        }
+
+        const dirAngle = CesiumMath.acosClamped(Cartesian3.dot(camera.directionWC, camera._changedDirection));
+
+        let dirPercentage;
+        if (defined(camera.frustum.fovy)) {
+            dirPercentage = dirAngle / (camera.frustum.fovy * 0.5);
+        } else {
+            dirPercentage = dirAngle;
+        }
+
+        const distance = Cartesian3.distance(camera.positionWC, camera._changedPosition);
+        const heightPercentage = distance / camera.positionCartographic.height;
+
+        if (dirPercentage > percentageChanged || heightPercentage > percentageChanged) {
+            camera.changed.raiseEvent(Math.max(dirPercentage, heightPercentage));
+            camera._changedPosition = Cartesian3.clone(camera.positionWC, camera._changedPosition);
+            camera._changedDirection = Cartesian3.clone(camera.directionWC, camera._changedDirection);
+        }
     }
 
     _setTransform(transform: CesiumMatrix4): void {
@@ -1158,25 +1199,6 @@ function zoom3D(camera: MapCamera, amount: number) {
     camera.move(camera.direction, amount);
 }
 
-// function updateCameraDeltas(camera: MapCamera) {
-//     if (!defined(camera._oldPositionWC)) {
-//         camera._oldPositionWC = Cartesian3.clone(camera.positionWC, camera._oldPositionWC);
-//     } else {
-//         camera.positionWCDeltaMagnitudeLastFrame = camera.positionWCDeltaMagnitude;
-//         const delta = Cartesian3.subtract(camera.positionWC, camera._oldPositionWC as Cartesian3, camera._oldPositionWC as Cartesian3);
-//         camera.positionWCDeltaMagnitude = Cartesian3.magnitude(delta);
-//         camera._oldPositionWC = Cartesian3.clone(camera.positionWC, camera._oldPositionWC);
-
-//         // Update move timers
-//         if (camera.positionWCDeltaMagnitude > 0.0) {
-//             camera.timeSinceMoved = 0.0;
-//             camera._lastMovedTimestamp = getTimestamp();
-//         } else {
-//             camera.timeSinceMoved = Math.max(getTimestamp() - camera._lastMovedTimestamp, 0.0) / 1000.0;
-//         }
-//     }
-// }
-
 function updateMembers(camera: MapCamera) {
     const mode = camera._mode;
 
@@ -1304,25 +1326,19 @@ function convertTransformForColumbusView(camera: MapCamera) {
 
 const aaaMat = new CesiumMatrix4();
 
+// console.log(CesiumMatrix4.inverseTransformation(MapCamera.TRANSFORM_2D, aaaMat));
+
 function updateViewMatrix(camera: MapCamera) {
     CesiumMatrix4.computeView(camera._position, camera._direction, camera._up, camera._right, camera._viewMatrix);
     CesiumMatrix4.multiply(camera._viewMatrix, camera._actualInvTransform, camera._viewMatrix);
-
     CesiumMatrix4.inverseTransformation(camera._viewMatrix, camera._invViewMatrix);
 
-    // CesiumMatrix4.transformToThreeMatrix4(camera._invViewMatrix, camera.frustum.matrixWorld);
-
-    CesiumMatrix4.inverseTransformation(MapCamera.TRANSFORM_2D, aaaMat);
-
+    CesiumMatrix4.inverseTransformation(camera._actualTransform, aaaMat);
     CesiumMatrix4.multiply(aaaMat, camera._invViewMatrix, aaaMat);
 
-    // camera.frustum.matrixWorld.copy(camera._invViewMatrix);
-
     camera.frustum.matrixWorld.copy(aaaMat);
+    // camera.frustum.updateMatrixWorld();
     camera.frustum.matrixWorld.decompose(camera.frustum.position, camera.frustum.quaternion, camera.frustum.scale);
-
-    // camera._invViewMatrix.decompose(ssps, camera.frustum.quaternion, camera.frustum.scale);
-    // camera.frustum.position.set(ssps.z, ssps.x, ssps.y);
 }
 
 const viewRectangleCVCartographic = new Cartographic();
@@ -1663,4 +1679,23 @@ function pickMapColumbusView(camera: MapCamera, windowPosition: Cartesian2, proj
     }
 
     return projection.ellipsoid.cartographicToCartesian(cart, result);
+}
+
+function updateCameraDeltas(camera: MapCamera) {
+    if (!defined(camera._oldPositionWC)) {
+        camera._oldPositionWC = Cartesian3.clone(camera.positionWC, camera._oldPositionWC);
+    } else {
+        camera.positionWCDeltaMagnitudeLastFrame = camera.positionWCDeltaMagnitude;
+        const delta = Cartesian3.subtract(camera.positionWC, camera._oldPositionWC, camera._oldPositionWC);
+        camera.positionWCDeltaMagnitude = Cartesian3.magnitude(delta);
+        camera._oldPositionWC = Cartesian3.clone(camera.positionWC, camera._oldPositionWC);
+
+        // Update move timers
+        if (camera.positionWCDeltaMagnitude > 0.0) {
+            camera.timeSinceMoved = 0.0;
+            camera._lastMovedTimestamp = getTimestamp();
+        } else {
+            camera.timeSinceMoved = Math.max(getTimestamp() - camera._lastMovedTimestamp, 0.0) / 1000.0;
+        }
+    }
 }
