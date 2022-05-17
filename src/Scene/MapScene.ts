@@ -407,9 +407,9 @@ export default class MapScene extends Scene {
         frameState.mode = this.mode;
         // frameState.cameraUnderground = this._cameraUnderground;
         this.renderCollection.children = [];
-        // frameState.cullingVolume = camera.frustum.computeCullingVolume(camera.positionWC, camera.directionWC, camera.upWC);
+        frameState.cullingVolume = camera.frustum.computeCullingVolume(camera.positionWC, camera.directionWC, camera.upWC);
         // frameState.globeTranslucencyState = this._globeTranslucencyState;
-        frameState.cullingVolume = camera.cullingVolume;
+        // frameState.cullingVolume = camera.cullingVolume;
 
         if (defined(this.globe)) {
             frameState.maximumScreenSpaceError = this.globe.maximumScreenSpaceError;

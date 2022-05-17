@@ -20,12 +20,13 @@ import { TileBoundingRegion } from '@/Core/TileBoundingRegion';
 import Visibility from '@/Core/Visibility';
 import { TileMaterial } from '@/Material/TileMaterial';
 import DrawMeshCommand from '@/Renderer/DrawMeshCommand';
-import { DoubleSide, MeshNormalMaterial, SphereBufferGeometry } from 'three';
+import { DoubleSide, MeshNormalMaterial, OrthographicCamera, SphereBufferGeometry } from 'three';
 import { FrameState } from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { ImageryState } from './ImageryState';
+import { QuadtreeOccluders } from './QuadtreeOccluders';
 import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
 import TerrainFillMesh from './TerrainFillMesh';
@@ -414,6 +415,8 @@ const addDrawCommandsForTile = (tileProvider: any, tile: any, frameState: FrameS
 
         if (dayTextureTranslationAndScale.length > 0) {
             frameState.commandList.push(command);
+        } else {
+            console.log('aaa');
         }
 
         // if (uniformMap.defines.TEXTURE_UNITS !== uniformMap.dayTextures.length) {
@@ -519,7 +522,7 @@ export default class GlobeSurfaceTileProvider {
 
     _vertexArraysToDestroy: any[] = [];
 
-    cartographicLimitRectangle = Rectangle.clone(Rectangle.MAX_VALUE);
+    cartographicLimitRectangle = Rectangle.clone(Rectangle.MAX_VALUE) as Rectangle;
 
     _debug = {
         wireframe: false,
@@ -881,32 +884,11 @@ export default class GlobeSurfaceTileProvider {
      * @param {FrameState} frameState The frame state.
      */
     endUpdate(frameState: FrameState): void {
-        // const tilesToRenderByTextureCount = this._tilesToRenderByTextureCount;
-        // for (let textureCountIndex = 0, textureCountLength = tilesToRenderByTextureCount.length; textureCountIndex < textureCountLength; ++textureCountIndex) {
-        //     const tilesToRender = tilesToRenderByTextureCount[textureCountIndex];
-        //     if (!defined(tilesToRender)) {
-        //         continue;
-        //     }
-        //     for (let tileIndex = 0, tileLength = tilesToRender.length; tileIndex < tileLength; ++tileIndex) {
-        //         addDrawCommandsForTile(this, tilesToRender[tileIndex], frameState);
-        //     }
-        // }
-
-        // const quadtree = this.quadtree;
-        // const exaggeration = frameState.terrainExaggeration;
-        // const exaggerationRelativeHeight = frameState.terrainExaggerationRelativeHeight;
-        // const exaggerationChanged = this._oldTerrainExaggeration !== exaggeration || this._oldTerrainExaggerationRelativeHeight !== exaggerationRelativeHeight;
-
-        // // Keep track of the next time there is a change in exaggeration
-        // this._oldTerrainExaggeration = exaggeration;
-        // this._oldTerrainExaggerationRelativeHeight = exaggerationRelativeHeight;
-
-        // if (exaggerationChanged) {
-        //     quadtree.forEachLoadedTile(function (tile: QuadtreeTile) {
-        //         const surfaceTile = tile.data as GlobeSurfaceTile;
-        //         surfaceTile.updateExaggeration(tile, frameState, quadtree);
-        //     });
-        // }
+        // If this frame has a mix of loaded and fill tiles, we need to propagate
+        // loaded heights to the fill tiles.
+        if (this._hasFillTilesThisFrame && this._hasLoadedTilesThisFrame) {
+            TerrainFillMesh.updateFillTiles(this, this._quadtree._tilesToRender, frameState, this._vertexArraysToDestroy);
+        }
 
         // Add the tile render commands to the command list, sorted by texture count.
         const tilesToRenderByTextureCount = this._tilesToRenderByTextureCount;
@@ -1033,24 +1015,38 @@ export default class GlobeSurfaceTileProvider {
         return this._terrainProvider.getLevelMaximumGeometricError(level);
     }
 
-    computeTileVisibility(tile: any, frameState: any, occluders: any): any {
+    computeTileVisibility(tile: QuadtreeTile, frameState: FrameState, occluders: QuadtreeOccluders): any {
         const distance = this.computeDistanceToTile(tile, frameState);
         tile._distance = distance;
 
-        // if (frameState.fog.enabled) {
-        //     if (CesiumMath.fog(distance, frameState.fog.density) >= 1.0) {
-        //         // Tile is completely in fog so return that it is not visible.
-        //         return Visibility.NONE;
-        //     }
-        // }
+        // const undergroundVisible = isUndergroundVisible(this, frameState);
+        const undergroundVisible = false;
+
+        if (frameState.fog.enabled && !undergroundVisible) {
+            if (CesiumMath.fog(distance, frameState.fog.density) >= 1.0) {
+                // Tile is completely in fog so return that it is not visible.
+                return Visibility.NONE;
+            }
+        }
 
         const surfaceTile = tile.data;
+        const tileBoundingRegion = surfaceTile.tileBoundingRegion;
+
+        if (surfaceTile.boundingVolumeSourceTile === undefined) {
+            // We have no idea where this tile is, so let's just call it partially visible.
+            return Visibility.PARTIAL;
+        }
+
         const cullingVolume = frameState.cullingVolume;
-        let boundingVolume = defaultValue(surfaceTile.orientedBoundingBox, surfaceTile.boundingSphere3D);
+        let boundingVolume: OrientedBoundingBox | BoundingSphere = tileBoundingRegion.boundingVolume;
+
+        if (!defined(boundingVolume)) {
+            boundingVolume = tileBoundingRegion.boundingSphere;
+        }
 
         // Check if the tile is outside the limit area in cartographic space
         surfaceTile.clippedByBoundaries = false;
-        const clippedCartographicLimitRectangle = clipRectangleAntimeridian(tile.rectangle, this.cartographicLimitRectangle as Rectangle);
+        const clippedCartographicLimitRectangle = clipRectangleAntimeridian(tile.rectangle, this.cartographicLimitRectangle);
         const areaLimitIntersection = Rectangle.simpleIntersection(clippedCartographicLimitRectangle, tile.rectangle, rectangleIntersectionScratch);
         if (!defined(areaLimitIntersection)) {
             return Visibility.NONE;
@@ -1061,22 +1057,57 @@ export default class GlobeSurfaceTileProvider {
 
         if (frameState.mode !== SceneMode.SCENE3D) {
             boundingVolume = boundingSphereScratch;
-            BoundingSphere.fromRectangleWithHeights2D(tile.rectangle, frameState.mapProjection, surfaceTile.minimumHeight, surfaceTile.maximumHeight, boundingVolume);
-            // Vector3.fromElements(boundingVolume.center.z, boundingVolume.center.x, boundingVolume.center.y, boundingVolume.center);
+            BoundingSphere.fromRectangleWithHeights2D(tile.rectangle, frameState.mapProjection, tileBoundingRegion.minimumHeight, tileBoundingRegion.maximumHeight, boundingVolume);
+            Cartesian3.fromElements(boundingVolume.center.z, boundingVolume.center.x, boundingVolume.center.y, boundingVolume.center);
 
-            Cartesian3.fromElements(boundingVolume.center.x, boundingVolume.center.y, boundingVolume.center.z, boundingVolume.center);
-
-            if (frameState.mode === SceneMode.MORPHING) {
-                boundingVolume = BoundingSphere.union(surfaceTile.boundingSphere3D, boundingVolume, boundingVolume);
+            if (frameState.mode === SceneMode.MORPHING && defined(surfaceTile.renderedMesh)) {
+                boundingVolume = BoundingSphere.union(tileBoundingRegion.boundingSphere, boundingVolume, boundingVolume);
             }
         }
 
+        if (!defined(boundingVolume)) {
+            return Visibility.PARTIAL;
+        }
+
+        // const clippingPlanes = this._clippingPlanes;
+        // if (defined(clippingPlanes) && clippingPlanes.enabled) {
+        //     const planeIntersection = clippingPlanes.computeIntersectionWithBoundingVolume(boundingVolume);
+        //     tile.isClipped = planeIntersection !== Intersect.INSIDE;
+        //     if (planeIntersection === Intersect.OUTSIDE) {
+        //         return Visibility.NONE;
+        //     }
+        // }
+
+        let visibility;
         const intersection = cullingVolume.computeVisibility(boundingVolume);
+
         if (intersection === Intersect.OUTSIDE) {
+            visibility = Visibility.NONE;
+        } else if (intersection === Intersect.INTERSECTING) {
+            visibility = Visibility.PARTIAL;
+        } else if (intersection === Intersect.INSIDE) {
+            visibility = Visibility.FULL;
+        }
+
+        if (visibility === Visibility.NONE) {
+            return visibility;
+        }
+
+        const ortho3D = frameState.mode === SceneMode.SCENE3D && frameState.camera.frustum instanceof OrthographicCamera;
+        if (frameState.mode === SceneMode.SCENE3D && !ortho3D && defined(occluders) && !undergroundVisible) {
+            const occludeePointInScaledSpace = surfaceTile.occludeePointInScaledSpace;
+            if (!defined(occludeePointInScaledSpace)) {
+                return visibility;
+            }
+
+            if (occluders.ellipsoid.isScaledSpacePointVisiblePossiblyUnderEllipsoid(occludeePointInScaledSpace, tileBoundingRegion.minimumHeight)) {
+                return visibility;
+            }
+
             return Visibility.NONE;
         }
 
-        return intersection;
+        return visibility;
     }
 
     /**
@@ -1258,7 +1289,7 @@ function updateTileBoundingRegion(tile: QuadtreeTile, tileProvider: GlobeSurface
 
         if (hasBoundingVolumesFromMesh) {
             if (!surfaceTile.boundingVolumeIsFromMesh) {
-                tileBoundingRegion._orientedBoundingBox = OrientedBoundingBox.clone(mesh.orientedBoundingBox, tileBoundingRegion._orientedBoundingBox);
+                tileBoundingRegion._orientedBoundingBox = OrientedBoundingBox.clone(mesh.orientedBoundingBox, tileBoundingRegion._orientedBoundingBox) as OrientedBoundingBox;
                 tileBoundingRegion._boundingSphere = BoundingSphere.clone(mesh.boundingSphere3D, tileBoundingRegion._boundingSphere);
                 surfaceTile.occludeePointInScaledSpace = Cartesian3.clone(mesh.occludeePointInScaledSpace, surfaceTile.occludeePointInScaledSpace);
 

@@ -31,6 +31,8 @@ export interface IMapCamera {
     aspect: number;
     near?: 0.1;
     far?: number;
+    xOffset?: number;
+    yOffset?: number;
 }
 
 interface IOrientation {

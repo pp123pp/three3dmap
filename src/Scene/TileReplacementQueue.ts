@@ -1,4 +1,5 @@
 import defined from '@/Core/defined';
+import QuadtreeTile from './QuadtreeTile';
 
 function remove(tileReplacementQueue: TileReplacementQueue, item: any) {
     const previous = item.replacementPrevious;
@@ -72,7 +73,7 @@ class TileReplacementQueue {
      *
      * @param {TileReplacementQueue} item The tile that was rendered.
      */
-    markTileRendered(item: any): void {
+    markTileRendered(item: QuadtreeTile): void {
         const head = this.head;
         if (head === item) {
             if (item === this._lastBeforeStartOfFrame) {

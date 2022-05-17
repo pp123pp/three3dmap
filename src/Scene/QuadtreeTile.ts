@@ -74,7 +74,7 @@ export default class QuadtreeTile {
      * @type {Object}
      * @default undefined
      */
-    data?: GlobeSurfaceTile;
+    data: GlobeSurfaceTile = undefined as any;
 
     _lastSelectionResultFrame?: number;
 

@@ -1,3 +1,4 @@
+import { BufferGeometry } from 'three';
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
 import { defaultValue } from './defaultValue';
@@ -113,7 +114,26 @@ export default class TerrainMesh {
 
     vertexCountWithoutSkirts: any;
 
-    constructor(center: any, vertices: any, indices: any, indexCountWithoutSkirts: any, vertexCountWithoutSkirts: any, minimumHeight: any, maximumHeight: any, boundingSphere3D: any, occludeePointInScaledSpace: any, vertexStride: any, orientedBoundingBox: any, encoding: any, westIndicesSouthToNorth: any, southIndicesEastToWest: any, eastIndicesNorthToSouth: any, northIndicesWestToEast: any) {
+    geometry: BufferGeometry = undefined as any;
+
+    constructor(
+        center: Cartesian3,
+        vertices: Float32Array,
+        indices: Uint16Array | Uint8Array,
+        indexCountWithoutSkirts: number,
+        vertexCountWithoutSkirts: number,
+        minimumHeight: number,
+        maximumHeight: number,
+        boundingSphere3D: BoundingSphere,
+        occludeePointInScaledSpace: any,
+        vertexStride?: number,
+        orientedBoundingBox?: OrientedBoundingBox,
+        encoding?: TerrainEncoding,
+        westIndicesSouthToNorth?: number[],
+        southIndicesEastToWest?: number[],
+        eastIndicesNorthToSouth?: number[],
+        northIndicesWestToEast?: number[]
+    ) {
         /**
          * The center of the tile.  Vertex positions are specified relative to this center.
          * @type {Cartesian3}
@@ -186,36 +206,36 @@ export default class TerrainMesh {
          * A bounding box that completely contains the tile.
          * @type {OrientedBoundingBox}
          */
-        this.orientedBoundingBox = orientedBoundingBox;
+        this.orientedBoundingBox = orientedBoundingBox as OrientedBoundingBox;
 
         /**
          * Information for decoding the mesh vertices.
          * @type {TerrainEncoding}
          */
-        this.encoding = encoding;
+        this.encoding = encoding as TerrainEncoding;
 
         /**
          * The indices of the vertices on the Western edge of the tile, ordered from South to North (clockwise).
          * @type {Number[]}
          */
-        this.westIndicesSouthToNorth = westIndicesSouthToNorth;
+        this.westIndicesSouthToNorth = westIndicesSouthToNorth as number[];
 
         /**
          * The indices of the vertices on the Southern edge of the tile, ordered from East to West (clockwise).
          * @type {Number[]}
          */
-        this.southIndicesEastToWest = southIndicesEastToWest;
+        this.southIndicesEastToWest = southIndicesEastToWest as number[];
 
         /**
          * The indices of the vertices on the Eastern edge of the tile, ordered from North to South (clockwise).
          * @type {Number[]}
          */
-        this.eastIndicesNorthToSouth = eastIndicesNorthToSouth;
+        this.eastIndicesNorthToSouth = eastIndicesNorthToSouth as number[];
 
         /**
          * The indices of the vertices on the Northern edge of the tile, ordered from West to East (clockwise).
          * @type {Number[]}
          */
-        this.northIndicesWestToEast = northIndicesWestToEast;
+        this.northIndicesWestToEast = northIndicesWestToEast as number[];
     }
 }

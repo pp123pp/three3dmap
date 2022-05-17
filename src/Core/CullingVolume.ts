@@ -5,6 +5,7 @@ import CesiumPlane from './CesiumPlane';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 import Intersect from './Intersect';
+import OrientedBoundingBox from './OrientedBoundingBox';
 
 export default class CullingVolume extends Frustum {
     planes: CesiumPlane[];
@@ -19,7 +20,7 @@ export default class CullingVolume extends Frustum {
      * @param {Object} boundingVolume The bounding volume whose intersection with the culling volume is to be tested.
      * @returns {Intersect}  Intersect.OUTSIDE, Intersect.INTERSECTING, or Intersect.INSIDE.
      */
-    computeVisibility(boundingVolume: BoundingSphere | AxisAlignedBoundingBox): Intersect {
+    computeVisibility(boundingVolume: BoundingSphere | AxisAlignedBoundingBox | OrientedBoundingBox): Intersect {
         //>>includeStart('debug', pragmas.debug);
         if (!defined(boundingVolume)) {
             throw new DeveloperError('boundingVolume is required.');

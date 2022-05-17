@@ -133,7 +133,6 @@ const invalidateAllTiles = function (primitive: QuadtreePrimitive) {
 
 function addTileToRenderList(primitive: QuadtreePrimitive, tile: any) {
     primitive._tilesToRender.push(tile);
-    ++primitive._debug.tilesRendered;
 }
 
 function processTileLoadQueue(primitive: QuadtreePrimitive, frameState: FrameState) {
@@ -613,9 +612,7 @@ function selectTilesForRendering(primitive: QuadtreePrimitive, frameState: Frame
     const camera = frameState.camera;
 
     primitive._cameraPositionCartographic = camera.positionCartographic;
-    // const cameraFrameOrigin = CesiumMatrix4.getTranslation(camera.transform, cameraOriginScratch);
-
-    const cameraFrameOrigin = new Cartesian3(0, 0, 0);
+    const cameraFrameOrigin = CesiumMatrix4.getTranslation(camera.transform, cameraOriginScratch);
     primitive._cameraReferenceFrameOriginCartographic = primitive.tileProvider.tilingScheme.ellipsoid.cartesianToCartographic(cameraFrameOrigin, primitive._cameraReferenceFrameOriginCartographic);
 
     // Traverse in depth-first, near-to-far order.
@@ -890,6 +887,20 @@ export default class QuadtreePrimitive {
 
     get occluders(): QuadtreeOccluders {
         return this._occluders;
+    }
+
+    /**
+     * Invokes a specified function for each {@link QuadtreeTile} that was rendered
+     * in the most recent frame.
+     *
+     * @param {Function} tileFunction The function to invoke for each rendered tile.  The
+     *        function is passed a reference to the tile as its only parameter.
+     */
+    forEachRenderedTile(tileFunction: any) {
+        const tilesRendered = this._tilesToRender;
+        for (let i = 0, len = tilesRendered.length; i < len; ++i) {
+            tileFunction(tilesRendered[i]);
+        }
     }
 
     render(frameState: FrameState): void {

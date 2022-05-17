@@ -193,6 +193,14 @@ class TileBoundingRegion {
         this._boundingSphere = BoundingSphere.fromOrientedBoundingBox(this._orientedBoundingBox);
     }
 
+    get boundingVolume(): OrientedBoundingBox {
+        return this._orientedBoundingBox;
+    }
+
+    get boundingSphere(): BoundingSphere {
+        return this._boundingSphere;
+    }
+
     /**
      * Gets the distance from the camera to the closest point on the tile.  This is used for level of detail selection.
      *
@@ -206,6 +214,13 @@ class TileBoundingRegion {
             return Math.max(regionResult, obbResult);
         }
         return regionResult;
+    }
+
+    computeBoundingVolumes(ellipsoid: Ellipsoid): void {
+        // An oriented bounding box that encloses this tile's region.  This is used to calculate tile visibility.
+        this._orientedBoundingBox = OrientedBoundingBox.fromRectangle(this.rectangle, this.minimumHeight, this.maximumHeight, ellipsoid);
+
+        this._boundingSphere = BoundingSphere.fromOrientedBoundingBox(this._orientedBoundingBox);
     }
 }
 

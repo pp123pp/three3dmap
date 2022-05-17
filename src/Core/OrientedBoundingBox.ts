@@ -9,6 +9,7 @@ import defined from './defined';
 import DeveloperError from './DeveloperError';
 import Ellipsoid from './Ellipsoid';
 import { EllipsoidTangentPlane } from './EllipsoidTangentPlane';
+import Intersect from './Intersect';
 import Rectangle from './Rectangle';
 
 const scratchCartesian1 = new Cartesian3();
@@ -480,5 +481,62 @@ export default class OrientedBoundingBox {
         }
 
         return distanceSquared;
+    }
+
+    /**
+     * Determines which side of a plane the oriented bounding box is located.
+     *
+     * @param {Plane} plane The plane to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is on the side of the plane
+     *                      the normal is pointing, {@link Intersect.OUTSIDE} if the entire box is
+     *                      on the opposite side, and {@link Intersect.INTERSECTING} if the box
+     *                      intersects the plane.
+     */
+    intersectPlane(plane: CesiumPlane): Intersect {
+        return OrientedBoundingBox.intersectPlane(this, plane);
+    }
+
+    /**
+     * Determines which side of a plane the oriented bounding box is located.
+     *
+     * @param {OrientedBoundingBox} box The oriented bounding box to test.
+     * @param {Plane} plane The plane to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is on the side of the plane
+     *                      the normal is pointing, {@link Intersect.OUTSIDE} if the entire box is
+     *                      on the opposite side, and {@link Intersect.INTERSECTING} if the box
+     *                      intersects the plane.
+     */
+    static intersectPlane(box: OrientedBoundingBox, plane: CesiumPlane): Intersect {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(box)) {
+            throw new DeveloperError('box is required.');
+        }
+
+        if (!defined(plane)) {
+            throw new DeveloperError('plane is required.');
+        }
+        //>>includeEnd('debug');
+
+        const center = box.center;
+        const normal = plane.normal;
+        const halfAxes = box.halfAxes;
+        const normalX = normal.x,
+            normalY = normal.y,
+            normalZ = normal.z;
+        // plane is used as if it is its normal; the first three components are assumed to be normalized
+        const radEffective =
+            Math.abs(normalX * halfAxes.elements[CesiumMatrix3.COLUMN0ROW0] + normalY * halfAxes.elements[CesiumMatrix3.COLUMN0ROW1] + normalZ * halfAxes.elements[CesiumMatrix3.COLUMN0ROW2]) +
+            Math.abs(normalX * halfAxes.elements[CesiumMatrix3.COLUMN1ROW0] + normalY * halfAxes.elements[CesiumMatrix3.COLUMN1ROW1] + normalZ * halfAxes.elements[CesiumMatrix3.COLUMN1ROW2]) +
+            Math.abs(normalX * halfAxes.elements[CesiumMatrix3.COLUMN2ROW0] + normalY * halfAxes.elements[CesiumMatrix3.COLUMN2ROW1] + normalZ * halfAxes.elements[CesiumMatrix3.COLUMN2ROW2]);
+        const distanceToPlane = Cartesian3.dot(normal, center) + plane.distance;
+
+        if (distanceToPlane <= -radEffective) {
+            // The entire box is on the negative side of the plane normal
+            return Intersect.OUTSIDE;
+        } else if (distanceToPlane >= radEffective) {
+            // The entire box is on the positive side of the plane normal
+            return Intersect.INSIDE;
+        }
+        return Intersect.INTERSECTING;
     }
 }

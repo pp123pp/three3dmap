@@ -380,7 +380,7 @@ export default class GlobeSurfaceTile {
     boundingSphere3D = new BoundingSphere();
     boundingSphere2D = new BoundingSphere();
     orientedBoundingBox?: OrientedBoundingBox = undefined;
-    tileBoundingRegion: any = undefined;
+    tileBoundingRegion: TileBoundingRegion = undefined as any;
     occludeePointInScaledSpace = new Cartesian3();
 
     loadedTerrain: any = undefined;
@@ -445,7 +445,7 @@ export default class GlobeSurfaceTile {
         const typedArray = mesh.vertices;
         const geometry = new BufferGeometry();
 
-        const attributes = (mesh.encoding as TerrainEncoding).getAttributes([]);
+        const attributes = mesh.encoding.getAttributes([]);
 
         const indexBuffers = (mesh.indices as any).indexBuffers || {};
         let indexBuffer = indexBuffers[context.id];
@@ -477,7 +477,7 @@ export default class GlobeSurfaceTile {
         }
 
         // tileTerrain.vertexArray = mesh.vertices;
-        (mesh as any).geometry = geometry;
+        mesh.geometry = geometry;
 
         return geometry;
     }

@@ -136,7 +136,7 @@ class HeightmapTerrainData {
             skirtHeight: this._skirtHeight,
             isGeographic: tilingScheme.projection instanceof GeographicProjection,
             exaggeration: exaggeration,
-            // exaggerationRelativeHeight: exaggerationRelativeHeight,
+            exaggerationRelativeHeight: exaggerationRelativeHeight,
             encoding: this._encoding,
         });
 
