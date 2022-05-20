@@ -1,4 +1,5 @@
 import { CesiumMath } from './CesiumMath';
+import DeveloperError from './DeveloperError';
 import WebGLConstants from './WebGLConstants';
 
 /**
@@ -46,12 +47,54 @@ const IndexDatatype = {
      * @example
      * this.indices = Cesium.IndexDatatype.createTypedArray(positions.length / 3, numberOfIndices);
      */
-    createTypedArray(numberOfVertices: number, indicesLengthOrArray: any) {
+    createTypedArray(numberOfVertices: number, indicesLengthOrArray: any): Uint16Array | Uint32Array {
         if (numberOfVertices >= CesiumMath.SIXTY_FOUR_KILOBYTES) {
             return new Uint32Array(indicesLengthOrArray);
         }
 
         return new Uint16Array(indicesLengthOrArray);
+    },
+
+    /**
+     * Returns the size, in bytes, of the corresponding datatype.
+     *
+     * @param {IndexDatatype} indexDatatype The index datatype to get the size of.
+     * @returns {Number} The size in bytes.
+     *
+     * @example
+     * // Returns 2
+     * const size = Cesium.IndexDatatype.getSizeInBytes(Cesium.IndexDatatype.UNSIGNED_SHORT);
+     */
+    getSizeInBytes(indexDatatype: any) {
+        switch (indexDatatype) {
+            case IndexDatatype.UNSIGNED_BYTE:
+                return Uint8Array.BYTES_PER_ELEMENT;
+            case IndexDatatype.UNSIGNED_SHORT:
+                return Uint16Array.BYTES_PER_ELEMENT;
+            case IndexDatatype.UNSIGNED_INT:
+                return Uint32Array.BYTES_PER_ELEMENT;
+        }
+    },
+
+    /**
+     * Gets the datatype with a given size in bytes.
+     *
+     * @param {Number} sizeInBytes The size of a single index in bytes.
+     * @returns {IndexDatatype} The index datatype with the given size.
+     */
+    fromSizeInBytes(sizeInBytes: number): number {
+        switch (sizeInBytes) {
+            case 2:
+                return IndexDatatype.UNSIGNED_SHORT;
+            case 4:
+                return IndexDatatype.UNSIGNED_INT;
+            case 1:
+                return IndexDatatype.UNSIGNED_BYTE;
+            //>>includeStart('debug', pragmas.debug);
+            default:
+                throw new DeveloperError('Size in bytes cannot be mapped to an IndexDatatype');
+            //>>includeEnd('debug');
+        }
     },
 };
 export default IndexDatatype;

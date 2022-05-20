@@ -233,6 +233,19 @@ export default class QuadtreeTile {
         return this._northeastChild as QuadtreeTile;
     }
 
+    get eligibleForUnloading(): boolean {
+        let result = true;
+
+        if (defined(this.data)) {
+            result = (this.data as GlobeSurfaceTile).eligibleForUnloading;
+            if (!defined(result)) {
+                result = true;
+            }
+        }
+
+        return result;
+    }
+
     /**
      * Creates a rectangular set of tiles for level of detail zero, the coarsest, least detailed level.
      *
@@ -410,5 +423,37 @@ export default class QuadtreeTile {
             return northOfParent.southwestChild;
         }
         return northOfParent.southeastChild;
+    }
+
+    /**
+     * Frees the resources associated with this tile and returns it to the <code>START</code>
+     * {@link QuadtreeTileLoadState}.  If the {@link QuadtreeTile#data} property is defined and it
+     * has a <code>freeResources</code> method, the method will be invoked.
+     *
+     * @memberof QuadtreeTile
+     */
+    freeResources(): void {
+        this.state = QuadtreeTileLoadState.START;
+        this.renderable = false;
+        this.upsampledFromParent = false;
+
+        if (defined(this.data) && defined(this.data.freeResources)) {
+            this.data.freeResources();
+        }
+
+        freeTile(this._southwestChild as QuadtreeTile);
+        this._southwestChild = undefined;
+        freeTile(this._southeastChild as QuadtreeTile);
+        this._southeastChild = undefined;
+        freeTile(this._northwestChild as QuadtreeTile);
+        this._northwestChild = undefined;
+        freeTile(this._northeastChild as QuadtreeTile);
+        this._northeastChild = undefined;
+    }
+}
+
+function freeTile(tile: QuadtreeTile) {
+    if (defined(tile)) {
+        tile.freeResources();
     }
 }

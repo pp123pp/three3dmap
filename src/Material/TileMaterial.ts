@@ -1,5 +1,5 @@
 import defined from '@/Core/defined';
-import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3 } from 'three';
+import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, Texture } from 'three';
 
 const vertexShader = `
 
@@ -263,7 +263,7 @@ void main(void){
 `;
 
 class TileMaterial extends ShaderMaterial {
-    constructor(parameters: any = {}, shaderSetOptions: any) {
+    constructor(parameters: any = {}) {
         super(parameters);
 
         this.lights = false;
@@ -286,11 +286,9 @@ class TileMaterial extends ShaderMaterial {
         this.vertexShader = vertexShader;
         this.fragmentShader = fragmentShader;
         this.defines.TEXTURE_UNITS = 1;
-        // this.wireframe = true;
-        // this.depthWrite = false;
     }
 
-    get dayTextures() {
+    get dayTextures(): Texture[] {
         return this.uniforms.u_dayTextures.value;
     }
 

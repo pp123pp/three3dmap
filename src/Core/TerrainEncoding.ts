@@ -158,7 +158,7 @@ export default class TerrainEncoding {
          * The matrix used to decompress the terrain vertices in the shader for RTE rendering.
          * @type {Matrix4}
          */
-        this.matrix = matrix as CesiumMatrix4;
+        this.matrix = defaultValue(matrix, new CesiumMatrix4().identity());
 
         /**
          * The terrain mesh contains normals.

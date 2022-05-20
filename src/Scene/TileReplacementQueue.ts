@@ -49,7 +49,7 @@ class TileReplacementQueue {
      * @param {Number} maximumTiles The maximum number of tiles in the queue.
      */
     trimTiles(maximumTiles: number): void {
-        let tileToTrim = this.tail;
+        let tileToTrim = this.tail as QuadtreeTile;
         let keepTrimming = true;
         while (keepTrimming && defined(this._lastBeforeStartOfFrame) && this.count > maximumTiles && defined(tileToTrim)) {
             // Stop trimming after we process the last tile not used in the

@@ -1,3 +1,4 @@
+import BoundingSphere from '@/Core/BoundingSphere';
 import defined from '@/Core/defined';
 import { FrameState } from '@/Scene/FrameState';
 import { Mesh } from 'three';
@@ -12,10 +13,9 @@ export default class DrawMeshCommand extends Mesh {
 
     frustumCulled = false;
 
-    owner?: any = undefined;
-
-    enabledClick = false;
-
+    owner: any;
+    boundingVolume: BoundingSphere = undefined as any;
+    orientedBoundingBox: any;
     constructor(geometry?: any, material?: any) {
         super(geometry, material);
 
@@ -29,14 +29,6 @@ export default class DrawMeshCommand extends Mesh {
             basicMaterial: undefined,
         };
         // this.pass = CommandRenderPass.OPAQUE;
-        this.isCommand = true;
-        this.allowPicking = true;
-
-        this.isDrawMeshCommand = true;
-
-        this.frustumCulled = false;
-
-        this.frustumCulled = false;
     }
 
     get levelId() {
