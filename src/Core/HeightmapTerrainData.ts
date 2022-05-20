@@ -160,7 +160,7 @@ class HeightmapTerrainData {
             // has stripped them down to JSON-style objects.
             that._mesh = new TerrainMesh(
                 center,
-                new Float32Array(result.vertices),
+                result.vertices,
                 indicesAndEdges.indices,
                 indicesAndEdges.indexCountWithoutSkirts,
                 vertexCountWithoutSkirts,

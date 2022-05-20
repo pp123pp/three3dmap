@@ -30,7 +30,7 @@ function createVerticesFromHeightmap(parameters: any, transferableObjects?: any)
     //   transferableObjects.push(vertices.buffer);
 
     return {
-        vertices: vertices.buffer,
+        vertices: vertices,
         numberOfAttributes: statistics.encoding.stride,
         minimumHeight: statistics.minimumHeight,
         maximumHeight: statistics.maximumHeight,
