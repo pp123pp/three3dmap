@@ -1,3 +1,6 @@
+import Buffer from '@/Renderer/Buffer';
+import BufferUsage from '@/Renderer/BufferUsage';
+import { BufferGeometry, Float32BufferAttribute, InterleavedBuffer, InterleavedBufferAttribute, StaticDrawUsage, Uint16BufferAttribute } from 'three';
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
 import createVerticesFromHeightmap from './createVerticesFromHeightmap';
@@ -11,6 +14,7 @@ import Rectangle from './Rectangle';
 import TerrainEncoding from './TerrainEncoding';
 import TerrainMesh from './TerrainMesh';
 import TerrainProvider from './TerrainProvider';
+import TerrainQuantization from './TerrainQuantization';
 
 class HeightmapTerrainData {
     _buffer: any;
@@ -19,7 +23,7 @@ class HeightmapTerrainData {
     _childTileMask: number;
     _createdByUpsampling: boolean;
     _skirtHeight?: number;
-    _mesh?: any;
+    _mesh: TerrainMesh = undefined as any;
     _structure?: any;
     _encoding: number;
     _waterMask?: boolean;
@@ -50,7 +54,7 @@ class HeightmapTerrainData {
 
         this._skirtHeight = undefined;
         this._bufferType = this._encoding === HeightmapEncoding.LERC ? Float32Array : this._buffer.constructor;
-        this._mesh = undefined;
+        // this._mesh = undefined;
     }
 
     /**
@@ -179,6 +183,41 @@ class HeightmapTerrainData {
 
             // Free memory received from server after mesh is created.
             that._buffer = undefined;
+
+            if (!defined(that._mesh.geometry)) {
+                const mesh = that._mesh;
+                const geometry = new BufferGeometry();
+
+                const typedArray = mesh.vertices;
+
+                const buffer = Buffer.createVertexBuffer({
+                    // context: context,
+                    typedArray: typedArray,
+                    usage: BufferUsage.STATIC_DRAW,
+                });
+
+                const attributes = mesh.encoding.getAttributes(buffer);
+
+                geometry.setIndex(new Uint16BufferAttribute(mesh.indices, 1));
+
+                if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
+                    const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute);
+                    geometry.setAttribute('compressed0', vertexBuffer);
+                } else {
+                    const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
+
+                    vertexBuffer.setUsage(StaticDrawUsage);
+
+                    const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
+                    const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
+
+                    geometry.setAttribute('position3DAndHeight', position3DAndHeight);
+                    geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
+                }
+                that._mesh.geometry = geometry;
+                (geometry as any).vertices = typedArray;
+            }
+
             return that._mesh;
         });
     }

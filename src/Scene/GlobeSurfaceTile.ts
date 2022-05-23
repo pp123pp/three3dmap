@@ -90,6 +90,9 @@ function upsample(surfaceTile: GlobeSurfaceTile, tile: QuadtreeTile, frameState:
 
     Promise.resolve(terrainDataPromise)
         .then(function (terrainData) {
+            if (!defined(terrainData)) {
+                debugger;
+            }
             surfaceTile.terrainData = terrainData;
             surfaceTile.terrainState = TerrainState.RECEIVED;
         })
@@ -100,6 +103,9 @@ function upsample(surfaceTile: GlobeSurfaceTile, tile: QuadtreeTile, frameState:
 
 function requestTileGeometry(surfaceTile: GlobeSurfaceTile, terrainProvider: any, x: number, y: number, level: number) {
     function success(terrainData: any) {
+        if (!defined(terrainData)) {
+            debugger;
+        }
         surfaceTile.terrainData = terrainData;
         surfaceTile.terrainState = TerrainState.RECEIVED;
         surfaceTile.request = undefined;
@@ -107,6 +113,7 @@ function requestTileGeometry(surfaceTile: GlobeSurfaceTile, terrainProvider: any
 
     function failure(error: Error) {
         if ((surfaceTile.request as Request).state === RequestState.CANCELLED) {
+            debugger;
             // Cancelled due to low priority - try again later.
             surfaceTile.terrainData = undefined;
             surfaceTile.terrainState = TerrainState.UNLOADED;
@@ -189,7 +196,8 @@ function transform(surfaceTile: GlobeSurfaceTile, frameState: FrameState, terrai
 
     Promise.resolve(meshPromise)
         .then(function (mesh) {
-            (surfaceTile as any).mesh = mesh;
+            // debugger;
+            surfaceTile.mesh = mesh;
             surfaceTile.terrainState = TerrainState.TRANSFORMED;
         })
         .catch(function () {
@@ -203,7 +211,7 @@ function createResources(surfaceTile: GlobeSurfaceTile, context: Context, terrai
     surfaceTile.fill = surfaceTile.fill && surfaceTile.fill.destroy(vertexArraysToDestroy);
 }
 
-function prepareNewTile(tile: any, terrainProvider: any, imageryLayerCollection: any) {
+function prepareNewTile(tile: QuadtreeTile, terrainProvider: EllipsoidTerrainProvider, imageryLayerCollection: ImageryLayerCollection) {
     let available = terrainProvider.getTileDataAvailable(tile.x, tile.y, tile.level);
 
     if (!defined(available) && defined(tile.parent)) {
@@ -306,7 +314,7 @@ export default class GlobeSurfaceTile {
 
     waterMaskTranslationAndScale = new Cartesian4(0.0, 0.0, 1.0, 1.0);
 
-    terrainData: any = undefined;
+    terrainData: any = null;
     center = new Cartesian3();
     vertexArray: any = undefined;
     minimumHeight = 0.0;
@@ -383,7 +391,6 @@ export default class GlobeSurfaceTile {
 
     static _createVertexArrayForMesh(context: Context, mesh: TerrainMesh): any {
         const typedArray = mesh.vertices;
-        const geometry = new BufferGeometry();
 
         const buffer = Buffer.createVertexBuffer({
             context: context,
@@ -417,27 +424,29 @@ export default class GlobeSurfaceTile {
             ++indexBuffer.referenceCount;
         }
 
-        geometry.setIndex(indexBuffer._typedArray);
+        if (!defined(mesh.geometry)) {
+            const geometry = new BufferGeometry();
+            geometry.setIndex(indexBuffer._typedArray);
 
-        if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
-            const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute).onUpload(disposeArray);
-            geometry.setAttribute('compressed0', vertexBuffer);
-        } else {
-            const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
+            if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
+                const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute).onUpload(disposeArray);
+                geometry.setAttribute('compressed0', vertexBuffer);
+            } else {
+                const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
 
-            vertexBuffer.setUsage(StaticDrawUsage);
+                vertexBuffer.setUsage(StaticDrawUsage);
 
-            const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
-            const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
+                const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
+                const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
 
-            geometry.setAttribute('position3DAndHeight', position3DAndHeight);
-            geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
+                geometry.setAttribute('position3DAndHeight', position3DAndHeight);
+                geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
+            }
+
+            mesh.geometry = geometry;
+
+            (geometry as any).vertices = typedArray;
         }
-
-        // tileTerrain.vertexArray = mesh.vertices;
-        mesh.geometry = geometry;
-
-        (geometry as any).vertices = typedArray;
 
         // return geometry;
 
@@ -564,26 +573,14 @@ export default class GlobeSurfaceTile {
             this.terrainData = undefined;
         }
 
-        if (defined(this.loadedTerrain)) {
-            this.loadedTerrain.freeResources();
-            this.loadedTerrain = undefined;
-        }
+        this.terrainData = undefined;
 
-        if (defined(this.upsampledTerrain)) {
-            this.upsampledTerrain.freeResources();
-            this.upsampledTerrain = undefined;
-        }
-
-        if (defined(this.pickTerrain)) {
-            this.pickTerrain.freeResources();
-            this.pickTerrain = undefined;
-        }
-
-        let i;
-        let len;
+        this.terrainState = TerrainState.UNLOADED;
+        this.mesh = undefined;
+        this.fill = this.fill && this.fill.destroy();
 
         const imageryList = this.imagery;
-        for (i = 0, len = imageryList.length; i < len; ++i) {
+        for (let i = 0, len = imageryList.length; i < len; ++i) {
             imageryList[i].freeResources();
         }
         this.imagery.length = 0;

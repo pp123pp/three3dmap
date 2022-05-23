@@ -653,14 +653,14 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
 
         // debugger;
 
-        if (!defined((surfaceTile.renderedMesh as TerrainMesh).geometry.index?.array)) {
-            debugger;
-        }
+        // if (!defined((surfaceTile.renderedMesh as TerrainMesh).geometry.index?.array)) {
+        //     debugger;
+        // }
 
-        let count = (surfaceTile.renderedMesh as TerrainMesh).indices.length;
-        if (!showSkirts) {
-            count = (surfaceTile.renderedMesh as TerrainMesh).indexCountWithoutSkirts;
-        }
+        // let count = (surfaceTile.renderedMesh as TerrainMesh).indices.length;
+        // if (!showSkirts) {
+        //     count = (surfaceTile.renderedMesh as TerrainMesh).indexCountWithoutSkirts;
+        // }
 
         command.geometry = surfaceTile.renderedMesh?.geometry;
 
@@ -1544,7 +1544,7 @@ function updateTileBoundingRegion(tile: QuadtreeTile, tileProvider: GlobeSurface
         tileBoundingRegion.minimumHeight = mesh.minimumHeight;
         tileBoundingRegion.maximumHeight = mesh.maximumHeight;
         hasBoundingVolumesFromMesh = true;
-    } else if (terrainData !== undefined && terrainData._minimumHeight !== undefined && terrainData._maximumHeight !== undefined) {
+    } else if (defined(terrainData) && terrainData._minimumHeight !== undefined && terrainData._maximumHeight !== undefined) {
         tileBoundingRegion.minimumHeight = terrainData._minimumHeight;
         tileBoundingRegion.maximumHeight = terrainData._maximumHeight;
     } else {
