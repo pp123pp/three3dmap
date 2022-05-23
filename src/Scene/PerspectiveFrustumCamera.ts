@@ -30,7 +30,7 @@ const update = function (frustum: PerspectiveFrustumCamera) {
     if (frustum.fovRadius !== frustum._fovRadius || frustum.aspect !== frustum._aspect || frustum.near !== frustum._near || frustum.far !== frustum._far || frustum.xOffset !== frustum._xOffset || frustum.yOffset !== frustum._yOffset) {
         frustum._aspect = frustum.aspect;
         frustum._fovRadius = frustum.fovRadius;
-        frustum._fovy = frustum.aspect <= 1 ? frustum.fov : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspect) * 2.0;
+        frustum._fovy = frustum.aspect <= 1 ? frustum.fovRadius : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspect) * 2.0;
         frustum._near = frustum.near;
         frustum._far = frustum.far;
         frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum._fovy);
@@ -108,14 +108,14 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
 
         this.aspect = clientWidth / clientHeight;
 
-        // if (this.aspect > 1) {
-        //     this.fov = (Math.atan(Math.tan((60 * Math.PI) / 360) / this.aspect) * 360) / Math.PI;
-        // } else {
-        //     // this.fov = 2 * Math.atan(Math.tan(CesiumMath.toRadians(60) / 2) * this.aspect) * 180 / Math.PI;
-        //     this.fov = 60;
-        // }
+        if (this.aspect > 1) {
+            this.fov = (Math.atan(Math.tan((60 * Math.PI) / 360) / this.aspect) * 360) / Math.PI;
+        } else {
+            // this.fov = 2 * Math.atan(Math.tan(CesiumMath.toRadians(60) / 2) * this.aspect) * 180 / Math.PI;
+            this.fov = 60;
+        }
 
-        this.fov = 60;
+        // this.fov = 60;
 
         this.updateProjectionMatrix();
 
