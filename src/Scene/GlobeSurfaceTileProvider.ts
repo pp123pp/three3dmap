@@ -26,6 +26,7 @@ import { WebMercatorProjection } from '@/Core/WebMercatorProjection';
 import { TileMaterial } from '@/Material/TileMaterial';
 import { ContextLimits } from '@/Renderer/ContextLimits';
 import DrawMeshCommand from '@/Renderer/DrawMeshCommand';
+import TileMeshCommand from '@/Renderer/TileMeshCommand';
 import { DoubleSide, MeshNormalMaterial, OrthographicCamera, SphereBufferGeometry } from 'three';
 import { FrameState } from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
@@ -416,9 +417,8 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
         let uniformMap;
 
         if (tileProvider._drawCommands.length <= tileProvider._usedDrawCommands) {
-            command = new DrawMeshCommand();
+            command = new TileMeshCommand();
             command.owner = tile;
-            command.frustumCulled = false;
             command.boundingVolume = new BoundingSphere();
             command.orientedBoundingBox = undefined;
 
@@ -694,6 +694,7 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
             command.orientedBoundingBox = OrientedBoundingBox.clone(tileBoundingRegion.boundingVolume, orientedBoundingBox);
         }
 
+        command.updateMaterial();
         frameState.commandList.push(command);
 
         // renderState = otherPassesRenderState;
