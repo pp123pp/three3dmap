@@ -184,39 +184,39 @@ class HeightmapTerrainData {
             // Free memory received from server after mesh is created.
             that._buffer = undefined;
 
-            if (!defined(that._mesh.geometry)) {
-                const mesh = that._mesh;
-                const geometry = new BufferGeometry();
+            // if (!defined(that._mesh.geometry)) {
+            //     const mesh = that._mesh;
+            //     const geometry = new BufferGeometry();
 
-                const typedArray = mesh.vertices;
+            //     const typedArray = mesh.vertices;
 
-                const buffer = Buffer.createVertexBuffer({
-                    // context: context,
-                    typedArray: typedArray,
-                    usage: BufferUsage.STATIC_DRAW,
-                });
+            //     const buffer = Buffer.createVertexBuffer({
+            //         // context: context,
+            //         typedArray: typedArray,
+            //         usage: BufferUsage.STATIC_DRAW,
+            //     });
 
-                const attributes = mesh.encoding.getAttributes(buffer);
+            //     const attributes = mesh.encoding.getAttributes(buffer);
 
-                geometry.setIndex(new Uint16BufferAttribute(mesh.indices, 1));
+            //     geometry.setIndex(new Uint16BufferAttribute(mesh.indices, 1));
 
-                if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
-                    const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute);
-                    geometry.setAttribute('compressed0', vertexBuffer);
-                } else {
-                    const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
+            //     if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
+            //         const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute);
+            //         geometry.setAttribute('compressed0', vertexBuffer);
+            //     } else {
+            //         const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
 
-                    vertexBuffer.setUsage(StaticDrawUsage);
+            //         vertexBuffer.setUsage(StaticDrawUsage);
 
-                    const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
-                    const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
+            //         const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
+            //         const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
 
-                    geometry.setAttribute('position3DAndHeight', position3DAndHeight);
-                    geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
-                }
-                that._mesh.geometry = geometry;
-                (geometry as any).vertices = typedArray;
-            }
+            //         geometry.setAttribute('position3DAndHeight', position3DAndHeight);
+            //         geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
+            //     }
+            //     that._mesh.geometry = geometry;
+            //     (geometry as any).vertices = typedArray;
+            // }
 
             return that._mesh;
         });

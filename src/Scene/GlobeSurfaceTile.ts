@@ -23,7 +23,7 @@ import Buffer from '@/Renderer/Buffer';
 import BufferUsage from '@/Renderer/BufferUsage';
 import Context from '@/Renderer/Context';
 import VertexArray from '@/Renderer/VertexArray';
-import { BufferGeometry, Float32BufferAttribute, InterleavedBuffer, InterleavedBufferAttribute, StaticDrawUsage, Uint16BufferAttribute } from 'three';
+import { BufferAttribute, BufferGeometry, Float32BufferAttribute, InterleavedBuffer, InterleavedBufferAttribute, StaticDrawUsage, Uint16BufferAttribute } from 'three';
 import { FrameState } from './FrameState';
 import { Imagery } from './Imagery';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
@@ -316,7 +316,7 @@ export default class GlobeSurfaceTile {
 
     terrainData: any = null;
     center = new Cartesian3();
-    vertexArray: any = undefined;
+    vertexArray: VertexArray = undefined as any;
     minimumHeight = 0.0;
     maximumHeight = 0.0;
     boundingSphere3D = new BoundingSphere();
@@ -343,6 +343,8 @@ export default class GlobeSurfaceTile {
     fill: any;
     mesh: any;
     boundingVolumeIsFromMesh = false;
+
+    geometry: BufferGeometry = undefined as any;
 
     get eligibleForUnloading(): boolean {
         // Do not remove tiles that are transitioning or that have
@@ -372,7 +374,7 @@ export default class GlobeSurfaceTile {
 
     freeVertexArray(): void {
         GlobeSurfaceTile._freeVertexArray(this.vertexArray);
-        this.vertexArray = undefined;
+        this.vertexArray = undefined as any;
         // GlobeSurfaceTile._freeVertexArray(this.wireframeVertexArray);
         // this.wireframeVertexArray = undefined;
     }
@@ -391,28 +393,20 @@ export default class GlobeSurfaceTile {
 
     static _createVertexArrayForMesh(context: Context, mesh: TerrainMesh): any {
         const typedArray = mesh.vertices;
-
         const buffer = Buffer.createVertexBuffer({
             context: context,
             typedArray: typedArray,
             usage: BufferUsage.STATIC_DRAW,
         });
-
         const attributes = mesh.encoding.getAttributes(buffer);
 
         const indexBuffers = (mesh.indices as any).indexBuffers || {};
         let indexBuffer = indexBuffers[context.id];
-
-        if (!defined(indexBuffer)) {
-            // indexBuffer = new Uint16BufferAttribute(mesh.indices, 1).onUpload(disposeArray);
-
-            // indexBuffers[context.id] = indexBuffer;
-            // (mesh.indices as any).indexBuffers = indexBuffers;
-
+        if (!defined(indexBuffer) || indexBuffer.isDestroyed()) {
             const indices = mesh.indices;
             indexBuffer = Buffer.createIndexBuffer({
                 context: context,
-                typedArray: new Uint16BufferAttribute(mesh.indices, 1),
+                typedArray: indices,
                 usage: BufferUsage.STATIC_DRAW,
                 indexDatatype: IndexDatatype.fromSizeInBytes(indices.BYTES_PER_ELEMENT),
             });
@@ -424,37 +418,37 @@ export default class GlobeSurfaceTile {
             ++indexBuffer.referenceCount;
         }
 
-        if (!defined(mesh.geometry)) {
-            const geometry = new BufferGeometry();
-            geometry.setIndex(indexBuffer._typedArray);
-
-            if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
-                const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute).onUpload(disposeArray);
-                geometry.setAttribute('compressed0', vertexBuffer);
-            } else {
-                const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
-
-                vertexBuffer.setUsage(StaticDrawUsage);
-
-                const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
-                const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
-
-                geometry.setAttribute('position3DAndHeight', position3DAndHeight);
-                geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
-            }
-
-            mesh.geometry = geometry;
-
-            (geometry as any).vertices = typedArray;
-        }
-
-        // return geometry;
-
         return new VertexArray({
             context: context,
             attributes: attributes,
             indexBuffer: indexBuffer,
         });
+
+        // if (!defined(mesh.geometry)) {
+        //     const geometry = new BufferGeometry();
+        //     geometry.setIndex(indexBuffer._typedArray);
+
+        //     if ((mesh.encoding as TerrainEncoding).quantization === TerrainQuantization.BITS12) {
+        //         const vertexBuffer = new Float32BufferAttribute(typedArray, attributes[0].componentsPerAttribute).onUpload(disposeArray);
+        //         geometry.setAttribute('compressed0', vertexBuffer);
+        //     } else {
+        //         const vertexBuffer = new InterleavedBuffer(typedArray, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
+
+        //         vertexBuffer.setUsage(StaticDrawUsage);
+
+        //         const position3DAndHeight = new InterleavedBufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute, 0, false);
+        //         const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(vertexBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
+
+        //         geometry.setAttribute('position3DAndHeight', position3DAndHeight);
+        //         geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
+        //     }
+
+        //     mesh.geometry = geometry;
+
+        //     (geometry as any).vertices = typedArray;
+        // }
+
+        // return geometry;
     }
 
     static processStateMachine(tile: QuadtreeTile, frameState: FrameState, terrainProvider: EllipsoidTerrainProvider, imageryLayerCollection: ImageryLayerCollection, quadtree: QuadtreePrimitive, vertexArraysToDestroy: any[], terrainOnly: boolean): void {
@@ -562,6 +556,45 @@ export default class GlobeSurfaceTile {
         return isDoneLoading;
     }
 
+    getGeometry(): BufferGeometry {
+        if (defined(this.geometry)) {
+            return this.geometry;
+        }
+
+        const geometry = new BufferGeometry();
+
+        const renderedMesh = this.renderedMesh as TerrainMesh;
+
+        geometry.setIndex(new BufferAttribute(renderedMesh.indices, 1));
+
+        const buffer = Buffer.createVertexBuffer({
+            // context: context,
+            typedArray: renderedMesh.vertices,
+            usage: BufferUsage.STATIC_DRAW,
+        });
+
+        const attributes = renderedMesh.encoding.getAttributes(buffer);
+
+        // const attributes = vertexArray._attributes;
+        const vertexBuffer = buffer._typedArray;
+
+        if (this.renderedMesh?.encoding.quantization === TerrainQuantization.BITS12) {
+            const compressed0 = new BufferAttribute(vertexBuffer, attributes[0].componentsPerAttribute).onUpload(disposeArray);
+            geometry.setAttribute('compressed0', compressed0);
+        } else {
+            const interleavedBuffer = new InterleavedBuffer(vertexBuffer, attributes[0].componentsPerAttribute + attributes[1].componentsPerAttribute);
+            interleavedBuffer.setUsage(StaticDrawUsage);
+            const position3DAndHeight = new InterleavedBufferAttribute(interleavedBuffer, attributes[0].componentsPerAttribute, 0, false);
+            const textureCoordAndEncodedNormals = new InterleavedBufferAttribute(interleavedBuffer, attributes[1].componentsPerAttribute, attributes[0].componentsPerAttribute, false);
+            geometry.setAttribute('position3DAndHeight', position3DAndHeight);
+            geometry.setAttribute('textureCoordAndEncodedNormals', textureCoordAndEncodedNormals);
+        }
+
+        this.geometry = geometry;
+
+        return this.geometry;
+    }
+
     freeResources(): void {
         if (defined(this.terrainData)) {
             if (defined(this.terrainData._mesh)) {
@@ -597,8 +630,8 @@ export default class GlobeSurfaceTile {
         // const vertices = (mesh as TerrainMesh).vertices;
         // const indices = (mesh as TerrainMesh).indices;
 
-        const vertices = (mesh as any).geometry.vertices;
-        const indices = (mesh as TerrainMesh).geometry.index?.array as number[];
+        const vertices = mesh?.vertices;
+        const indices = mesh?.indices as Uint16Array;
 
         const encoding = (mesh as TerrainMesh).encoding;
 
@@ -682,6 +715,7 @@ export default class GlobeSurfaceTile {
     }
 
     static _freeVertexArray(vertexArray: VertexArray): void {
+        debugger;
         if (defined(vertexArray)) {
             if (defined(vertexArray)) {
                 const indexBuffer = vertexArray.indexBuffer;
