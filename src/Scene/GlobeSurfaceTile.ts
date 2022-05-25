@@ -556,7 +556,7 @@ export default class GlobeSurfaceTile {
         return isDoneLoading;
     }
 
-    getGeometry(): BufferGeometry {
+    getGeometry(context: Context): BufferGeometry {
         if (defined(this.geometry)) {
             return this.geometry;
         }
@@ -568,7 +568,7 @@ export default class GlobeSurfaceTile {
         geometry.setIndex(new BufferAttribute(renderedMesh.indices, 1));
 
         const buffer = Buffer.createVertexBuffer({
-            // context: context,
+            context: context,
             typedArray: renderedMesh.vertices,
             usage: BufferUsage.STATIC_DRAW,
         });

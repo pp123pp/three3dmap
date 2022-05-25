@@ -1,18 +1,30 @@
 import defined from '@/Core/defined';
 import { destroyObject } from '@/Core/destroyObject';
+import Buffer from './Buffer';
 import Context from './Context';
+
+interface IVertexArray {
+    context: Context;
+    attributes: any[];
+    indexBuffer: Buffer;
+}
 
 export default class VertexArray {
     _context: Context;
     _attributes: any;
-    _indexBuffer: any;
-    constructor(options: any) {
+    _indexBuffer: Buffer;
+    constructor(options: IVertexArray) {
+        const context = options.context;
+        const gl = context.gl;
+        const attributes = options.attributes;
+        const indexBuffer = options.indexBuffer;
+
         this._context = options.context;
         this._attributes = options.attributes;
         this._indexBuffer = options.indexBuffer;
     }
 
-    get indexBuffer(): any {
+    get indexBuffer(): Buffer {
         return this._indexBuffer;
     }
 
@@ -31,7 +43,7 @@ export default class VertexArray {
 
         const indexBuffer = this._indexBuffer;
         if (defined(indexBuffer)) {
-            indexBuffer.array = null;
+            indexBuffer._typedArray = null;
         }
 
         return destroyObject(this);

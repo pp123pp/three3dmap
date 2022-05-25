@@ -1,3 +1,4 @@
+import Buffer from '@/Renderer/Buffer';
 import AttributeCompression from './AttributeCompression';
 import { AxisAlignedBoundingBox } from './AxisAlignedBoundingBox';
 import Cartesian2 from './Cartesian2';
@@ -10,6 +11,15 @@ import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 import { TerrainExaggeration } from './TerrainExaggeration';
 import TerrainQuantization from './TerrainQuantization';
+
+interface IAttribute {
+    index: number;
+    vertexBuffer: Buffer;
+    componentDatatype: number;
+    componentsPerAttribute: number;
+    offsetInBytes: number;
+    strideInBytes: number;
+}
 
 const cartesian3Scratch = new Cartesian3();
 const cartesian3DimScratch = new Cartesian3();
@@ -435,7 +445,7 @@ export default class TerrainEncoding {
         this.stride = vertexStride;
     }
 
-    getAttributes(buffer: any) {
+    getAttributes(buffer: Buffer): IAttribute[] {
         const datatype = ComponentDatatype.FLOAT;
         const sizeInBytes = ComponentDatatype.getSizeInBytes(datatype);
         const strideInBytes = this.stride * sizeInBytes;

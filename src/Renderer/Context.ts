@@ -1,5 +1,5 @@
 import MapScene from '@/Scene/MapScene';
-import { FloatType, NearestFilter, RGBFormat, Texture, Vector2, WebGLMultipleRenderTargets, WebGLRenderTarget } from 'three';
+import { FloatType, NearestFilter, RGBFormat, Texture, Vector2, WebGLMultipleRenderTargets, WebGLRenderingContext, WebGLRenderTarget } from 'three';
 import { generateUUID } from 'three/src/math/MathUtils';
 import { ContextLimits } from './ContextLimits';
 
@@ -13,6 +13,9 @@ export default class Context {
     drawingBufferHeight = new Vector2();
     colorFrameBuffer: WebGLRenderTarget;
     frameBuffer: WebGLMultipleRenderTargets;
+
+    readonly gl: WebGL2RenderingContext;
+
     constructor(scene: MapScene) {
         this.scene = scene;
         const bufferSize = scene.drawingBufferSize;
@@ -38,6 +41,8 @@ export default class Context {
         renderTarget.texture[0].name = 'depth';
         renderTarget.texture[1].name = 'normal';
         this.frameBuffer = renderTarget;
+
+        this.gl = scene.renderer.getContext() as WebGL2RenderingContext;
     }
 
     get colorTexture(): Texture {

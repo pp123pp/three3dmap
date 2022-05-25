@@ -662,7 +662,7 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
         //     count = (surfaceTile.renderedMesh as TerrainMesh).indexCountWithoutSkirts;
         // }
 
-        command.geometry = surfaceTile.getGeometry();
+        command.geometry = surfaceTile.getGeometry(frameState.context);
 
         const material = command.material;
 
