@@ -219,10 +219,9 @@ export default class MapScene extends Scene {
 
     _removeGlobeCallbacks: any[] = [];
 
-    readonly cameraUnderground = false;
-
     readonly pickPositionSupported = true;
     _globeHeight?: number;
+    _cameraUnderground = false;
 
     readonly morphStart = new Emit();
     constructor(options: SceneOptions) {
@@ -311,6 +310,10 @@ export default class MapScene extends Scene {
         return this._globeHeight as number;
     }
 
+    get cameraUnderground(): boolean {
+        return this._cameraUnderground;
+    }
+
     get mode(): SceneMode {
         return this._mode;
     }
@@ -328,7 +331,7 @@ export default class MapScene extends Scene {
         // this.camera.update(this._mode);
 
         this._globeHeight = getGlobeHeight(this);
-        // this._cameraUnderground = isCameraUnderground(this);
+        this._cameraUnderground = isCameraUnderground(this);
 
         this.screenSpaceCameraController.update();
         this.mapCamera.update(this.mode);
@@ -408,6 +411,7 @@ export default class MapScene extends Scene {
         // frameState.cameraUnderground = this._cameraUnderground;
         this.renderCollection.children = [];
         frameState.cullingVolume = camera.frustum.computeCullingVolume(camera.positionWC, camera.directionWC, camera.upWC);
+
         // frameState.globeTranslucencyState = this._globeTranslucencyState;
         // frameState.cullingVolume = camera.cullingVolume;
 
@@ -458,4 +462,29 @@ function getGlobeHeight(scene: MapScene) {
         return globe.getHeight(cartographic);
     }
     return undefined;
+}
+
+function isCameraUnderground(scene: MapScene) {
+    const camera = scene.camera;
+    const mode = scene._mode;
+    const globe = scene.globe;
+    const cameraController = scene.screenSpaceCameraController;
+    const cartographic = camera.positionCartographic;
+
+    if (!defined(cartographic)) {
+        return false;
+    }
+
+    if (!cameraController.onMap() && cartographic.height < 0.0) {
+        // The camera can go off the map while in Columbus View.
+        // Make a best guess as to whether it's underground by checking if its height is less than zero.
+        return true;
+    }
+
+    if (!defined(globe) || !globe.visible || mode === SceneMode.SCENE2D || mode === SceneMode.MORPHING) {
+        return false;
+    }
+
+    const globeHeight = scene._globeHeight as number;
+    return defined(globeHeight) && cartographic.height < globeHeight;
 }

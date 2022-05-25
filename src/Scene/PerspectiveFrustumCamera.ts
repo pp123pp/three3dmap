@@ -1,32 +1,24 @@
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartographic from '@/Core/Cartographic';
 import CesiumMatrix4 from '@/Core/CesiumMatrix4';
+import CesiumPlane from '@/Core/CesiumPlane';
 import CullingVolume from '@/Core/CullingVolume';
 import { defaultValue } from '@/Core/defaultValue';
-import { SceneMode } from '@/Core/SceneMode';
-import { Frustum, MathUtils, PerspectiveCamera } from 'three';
+import defined from '@/Core/defined';
+import { MathUtils, PerspectiveCamera } from 'three';
 import { IMapCamera } from './MapCamera';
 import MapScene from './MapScene';
-import { PerspectiveOffCenterFrustum } from './PerspectiveOffCenterFrustum';
 
 const worldDirectionWC = new Cartesian3();
 
 const directionWC = new Cartesian3();
 
+const getPlanesRight = new Cartesian3();
+const getPlanesNearCenter = new Cartesian3();
+const getPlanesFarCenter = new Cartesian3();
+const getPlanesNormal = new Cartesian3();
+
 const update = function (frustum: PerspectiveFrustumCamera) {
-    // if (frustum.fovRadius !== frustum._fovRadius || frustum.aspect !== frustum._aspect || frustum.near !== frustum._near || frustum.far !== frustum._far) {
-    //     frustum._aspect = frustum.aspect;
-    //     frustum._fovRadius = frustum.fovRadius;
-    //     frustum._fovy = frustum.aspect <= 1 ? frustum.fovRadius : Math.atan(Math.tan(frustum.fovRadius * 0.5) / frustum.aspect) * 2.0;
-    //     frustum._near = frustum.near;
-    //     frustum._far = frustum.far;
-    //     frustum._sseDenominator = 2.0 * Math.tan(0.5 * frustum._fovy);
-    //     // frustum._xOffset = frustum.xOffset;
-    //     // frustum._yOffset = frustum.yOffset;
-    // }
-
-    const f = frustum._offCenterFrustum;
-
     if (frustum.fovRadius !== frustum._fovRadius || frustum.aspect !== frustum._aspect || frustum.near !== frustum._near || frustum.far !== frustum._far || frustum.xOffset !== frustum._xOffset || frustum.yOffset !== frustum._yOffset) {
         frustum._aspect = frustum.aspect;
         frustum._fovRadius = frustum.fovRadius;
@@ -37,17 +29,17 @@ const update = function (frustum: PerspectiveFrustumCamera) {
         frustum._xOffset = frustum.xOffset;
         frustum._yOffset = frustum.yOffset;
 
-        f.top = frustum.near * Math.tan(0.5 * frustum._fovy);
-        f.bottom = -f.top;
-        f.right = frustum.aspect * f.top;
-        f.left = -f.right;
-        f.near = frustum.near;
-        f.far = frustum.far;
+        const top = (frustum.near * Math.tan(MathUtils.DEG2RAD * 0.5 * frustum.fov)) / frustum.zoom;
+        const height = 2 * top;
+        const width = frustum.aspect * height;
+        const left = -0.5 * width;
+        const right = left + width;
+        const bottom = top - height;
 
-        f.right += frustum.xOffset;
-        f.left += frustum.xOffset;
-        f.top += frustum.yOffset;
-        f.bottom += frustum.yOffset;
+        frustum.top = top;
+        frustum.bottom = bottom;
+        frustum.left = left;
+        frustum.right = right;
     }
 };
 
@@ -75,7 +67,10 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
 
     _cullingVolume = new CullingVolume();
 
-    _offCenterFrustum = new PerspectiveOffCenterFrustum();
+    left = 0;
+    right = 0;
+    top = 0;
+    bottom = 0;
 
     constructor(options: IMapCamera) {
         super(options.fov, options.aspect, options.near, options.far);
@@ -184,6 +179,115 @@ export default class PerspectiveFrustumCamera extends PerspectiveCamera {
      */
     computeCullingVolume(position: Cartesian3, direction: Cartesian3, up: Cartesian3): CullingVolume {
         update(this);
-        return this._offCenterFrustum.computeCullingVolume(position, direction, up);
+
+        const planes = this._cullingVolume.planes;
+
+        const t = this.top;
+        const b = this.bottom;
+        const r = this.right;
+        const l = this.left;
+        const n = this.near as number;
+        const f = this.far;
+
+        const right = Cartesian3.cross(direction, up, getPlanesRight);
+
+        const nearCenter = getPlanesNearCenter;
+        Cartesian3.multiplyByScalar(direction, n, nearCenter);
+        Cartesian3.add(position, nearCenter, nearCenter);
+
+        const farCenter = getPlanesFarCenter;
+        Cartesian3.multiplyByScalar(direction, f, farCenter);
+        Cartesian3.add(position, farCenter, farCenter);
+
+        const normal = getPlanesNormal;
+
+        // Left plane computation
+        Cartesian3.multiplyByScalar(right, l, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.normalize(normal, normal);
+        Cartesian3.cross(normal, up, normal);
+        Cartesian3.normalize(normal, normal);
+
+        let plane = planes[0];
+        if (!defined(plane)) {
+            plane = planes[0] = new CesiumPlane();
+        }
+        plane.normal.x = normal.x;
+        plane.normal.y = normal.y;
+        plane.normal.z = normal.z;
+        plane.constant = -Cartesian3.dot(normal, position);
+
+        // Right plane computation
+        Cartesian3.multiplyByScalar(right, r, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.cross(up, normal, normal);
+        Cartesian3.normalize(normal, normal);
+
+        plane = planes[1];
+        if (!defined(plane)) {
+            plane = planes[1] = new CesiumPlane();
+        }
+        plane.normal.x = normal.x;
+        plane.normal.y = normal.y;
+        plane.normal.z = normal.z;
+        plane.constant = -Cartesian3.dot(normal, position);
+
+        // Bottom plane computation
+        Cartesian3.multiplyByScalar(up, b, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.cross(right, normal, normal);
+        Cartesian3.normalize(normal, normal);
+
+        plane = planes[2];
+        if (!defined(plane)) {
+            plane = planes[2] = new CesiumPlane();
+        }
+        plane.normal.x = normal.x;
+        plane.normal.y = normal.y;
+        plane.normal.z = normal.z;
+        plane.constant = -Cartesian3.dot(normal, position);
+
+        // Top plane computation
+        Cartesian3.multiplyByScalar(up, t, normal);
+        Cartesian3.add(nearCenter, normal, normal);
+        Cartesian3.subtract(normal, position, normal);
+        Cartesian3.cross(normal, right, normal);
+        Cartesian3.normalize(normal, normal);
+
+        plane = planes[3];
+        if (!defined(plane)) {
+            plane = planes[3] = new CesiumPlane();
+        }
+        plane.normal.x = normal.x;
+        plane.normal.y = normal.y;
+        plane.normal.z = normal.z;
+        plane.constant = -Cartesian3.dot(normal, position);
+
+        // Near plane computation
+        plane = planes[4];
+        if (!defined(plane)) {
+            plane = planes[4] = new CesiumPlane();
+        }
+        plane.normal.x = direction.x;
+        plane.normal.y = direction.y;
+        plane.normal.z = direction.z;
+        plane.constant = -Cartesian3.dot(direction, nearCenter);
+
+        // Far plane computation
+        Cartesian3.negate(direction, normal);
+
+        plane = planes[5];
+        if (!defined(plane)) {
+            plane = planes[5] = new CesiumPlane();
+        }
+        plane.normal.x = normal.x;
+        plane.normal.y = normal.y;
+        plane.normal.z = normal.z;
+        plane.constant = -Cartesian3.dot(normal, farCenter);
+
+        return this._cullingVolume;
     }
 }

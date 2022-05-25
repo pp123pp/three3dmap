@@ -715,7 +715,7 @@ export default class GlobeSurfaceTile {
     }
 
     static _freeVertexArray(vertexArray: VertexArray): void {
-        debugger;
+        // debugger;
         if (defined(vertexArray)) {
             if (defined(vertexArray)) {
                 const indexBuffer = vertexArray.indexBuffer;

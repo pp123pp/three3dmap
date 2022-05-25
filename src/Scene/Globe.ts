@@ -49,7 +49,7 @@ class Globe extends Object3DCollection {
 
     _terrainProviderChanged = new Emit();
 
-    maximumScreenSpaceError = 2;
+    maximumScreenSpaceError = 4;
     _imageryLayerCollection: ImageryLayerCollection;
 
     /**
