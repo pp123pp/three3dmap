@@ -1,7 +1,7 @@
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
-import { CesiumMath } from './CesiumMath';
-import { defaultValue } from './defaultValue';
+import CesiumMath from './CesiumMath';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import scaleToGeodeticSurface from './scaleToGeodeticSurface';
 

@@ -1,10 +1,10 @@
 import Cartesian2 from './Cartesian2';
 import Cartographic from './Cartographic';
-import { CesiumMath } from './CesiumMath';
-import { defaultValue } from './defaultValue';
+import CesiumMath from './CesiumMath';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
-import { GeographicProjection } from './GeographicProjection';
+import GeographicProjection from './GeographicProjection';
 import Rectangle from './Rectangle';
 
 interface IGeographicTilingScheme {

@@ -16,7 +16,7 @@ export default class Buffer {
     _bufferTarget: any;
     _sizeInBytes: any;
     _usage: any;
-    _buffer: WebGLBuffer;
+    // _buffer: WebGLBuffer;
     _typedArray: any;
     vertexArrayDestroyable = true;
     referenceCount = 0;
@@ -33,10 +33,10 @@ export default class Buffer {
         }
 
         const gl = options.context.gl;
-        const buffer = gl.createBuffer();
-        gl.bindBuffer(bufferTarget, buffer);
-        gl.bufferData(bufferTarget, hasArray ? typedArray : sizeInBytes, usage);
-        gl.bindBuffer(bufferTarget, null);
+        // const buffer = gl.createBuffer();
+        // gl.bindBuffer(bufferTarget, buffer);
+        // gl.bufferData(bufferTarget, hasArray ? typedArray : sizeInBytes, usage);
+        // gl.bindBuffer(bufferTarget, null);
 
         this._gl = gl;
 
@@ -45,7 +45,7 @@ export default class Buffer {
         this._usage = usage;
         this._typedArray = typedArray;
 
-        this._buffer = buffer as WebGLBuffer;
+        // this._buffer = buffer as WebGLBuffer;
     }
 
     get sizeInBytes(): any {
@@ -103,7 +103,7 @@ export default class Buffer {
     }
 
     destroy(): void {
-        this._gl.deleteBuffer(this._buffer);
+        // this._gl.deleteBuffer(this._buffer);
         this._typedArray = null;
         return destroyObject(this);
     }

@@ -3,7 +3,7 @@ import Cartographic from './Cartographic';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 
-class GeographicProjection {
+export default class GeographicProjection {
     _ellipsoid: Ellipsoid;
     _semimajorAxis: number;
     _oneOverSemimajorAxis: number;
@@ -74,4 +74,3 @@ class GeographicProjection {
         return result as Cartographic;
     }
 }
-export { GeographicProjection };

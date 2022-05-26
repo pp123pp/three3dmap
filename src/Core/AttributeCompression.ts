@@ -1,7 +1,7 @@
 import Cartesian2 from './Cartesian2';
 import Cartesian3 from './Cartesian3';
 import Cartesian4 from './Cartesian4';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 

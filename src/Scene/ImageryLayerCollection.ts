@@ -1,6 +1,6 @@
 import { ImageryLayer } from './ImageryLayer';
 import Emit from '@/Core/Emit';
-import { FrameState } from './FrameState';
+import FrameState from './FrameState';
 import DeveloperError from '@/Core/DeveloperError';
 import defined from '@/Core/defined';
 

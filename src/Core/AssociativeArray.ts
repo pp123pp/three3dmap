@@ -7,7 +7,7 @@ import DeveloperError from './DeveloperError';
  * @alias AssociativeArray
  * @constructor
  */
-class AssociativeArray {
+export default class AssociativeArray {
     _array: any[];
     _hash: any;
     constructor() {
@@ -123,5 +123,3 @@ class AssociativeArray {
         }
     }
 }
-
-export { AssociativeArray };

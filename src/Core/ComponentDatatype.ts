@@ -23,7 +23,7 @@ const ComponentDatatype = {
      * // Returns Int8Array.BYTES_PER_ELEMENT
      * var size = Cesium.ComponentDatatype.getSizeInBytes(Cesium.ComponentDatatype.BYTE);
      */
-    getSizeInBytes: (componentDatatype: number) => {
+    getSizeInBytes: (componentDatatype: number): number => {
         // >>includeStart('debug', pragmas.debug);
         if (!defined(componentDatatype)) {
             throw new DeveloperError('value is required.');
@@ -52,6 +52,31 @@ const ComponentDatatype = {
                 throw new DeveloperError('componentDatatype is not a valid value.');
             // >>includeEnd('debug');
         }
+    },
+
+    /**
+     * Validates that the provided component datatype is a valid {@link ComponentDatatype}
+     *
+     * @param {ComponentDatatype} componentDatatype The component datatype to validate.
+     * @returns {Boolean} <code>true</code> if the provided component datatype is a valid value; otherwise, <code>false</code>.
+     *
+     * @example
+     * if (!Cesium.ComponentDatatype.validate(componentDatatype)) {
+     *   throw new Cesium.DeveloperError('componentDatatype must be a valid value.');
+     * }
+     */
+    validate(componentDatatype: number): boolean {
+        return (
+            defined(componentDatatype) &&
+            (componentDatatype === ComponentDatatype.BYTE ||
+                componentDatatype === ComponentDatatype.UNSIGNED_BYTE ||
+                componentDatatype === ComponentDatatype.SHORT ||
+                componentDatatype === ComponentDatatype.UNSIGNED_SHORT ||
+                componentDatatype === ComponentDatatype.INT ||
+                componentDatatype === ComponentDatatype.UNSIGNED_INT ||
+                componentDatatype === ComponentDatatype.FLOAT ||
+                componentDatatype === ComponentDatatype.DOUBLE)
+        );
     },
 };
 

@@ -1,4 +1,4 @@
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 
 /**
  * Clones an object, returning a new object containing the same properties.

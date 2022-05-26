@@ -1,7 +1,7 @@
 import MapScene from '@/Scene/MapScene';
 import { FloatType, NearestFilter, RGBFormat, Texture, Vector2, WebGLMultipleRenderTargets, WebGLRenderingContext, WebGLRenderTarget } from 'three';
 import { generateUUID } from 'three/src/math/MathUtils';
-import { ContextLimits } from './ContextLimits';
+import ContextLimits from './ContextLimits';
 
 export default class Context {
     scene: MapScene;

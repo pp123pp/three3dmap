@@ -1,4 +1,4 @@
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 
 export default class Cartographic {

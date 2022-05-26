@@ -1,4 +1,4 @@
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import DeveloperError from './DeveloperError';
 
 function returnTrue(): boolean {

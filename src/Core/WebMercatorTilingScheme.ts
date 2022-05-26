@@ -1,7 +1,7 @@
 import Cartesian2 from './Cartesian2';
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 import Rectangle from './Rectangle';

@@ -1,6 +1,6 @@
 import { Vector2 } from 'three';
-import { CesiumMath } from './CesiumMath';
-import { defaultValue } from './defaultValue';
+import CesiumMath from './CesiumMath';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 

@@ -1,7 +1,7 @@
 import { BufferGeometry } from 'three';
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import OrientedBoundingBox from './OrientedBoundingBox';
 import TerrainEncoding from './TerrainEncoding';
 

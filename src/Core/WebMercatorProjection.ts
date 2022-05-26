@@ -1,6 +1,6 @@
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import Ellipsoid from './Ellipsoid';
 
 class WebMercatorProjection {

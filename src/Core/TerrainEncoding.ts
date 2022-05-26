@@ -1,24 +1,28 @@
 import Buffer from '@/Renderer/Buffer';
 import AttributeCompression from './AttributeCompression';
-import { AxisAlignedBoundingBox } from './AxisAlignedBoundingBox';
+import AxisAlignedBoundingBox from './AxisAlignedBoundingBox';
 import Cartesian2 from './Cartesian2';
 import Cartesian3 from './Cartesian3';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import CesiumMatrix4 from './CesiumMatrix4';
 import { ComponentDatatype } from './ComponentDatatype';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 import { TerrainExaggeration } from './TerrainExaggeration';
 import TerrainQuantization from './TerrainQuantization';
 
-interface IAttribute {
+export default interface IAttribute {
     index: number;
     vertexBuffer: Buffer;
     componentDatatype: number;
     componentsPerAttribute: number;
     offsetInBytes: number;
     strideInBytes: number;
+    value?: any;
+    enabled?: boolean;
+    normalize?: boolean;
+    instanceDivisor?: number;
 }
 
 const cartesian3Scratch = new Cartesian3();
@@ -524,7 +528,7 @@ export default class TerrainEncoding {
         return vertexStride;
     }
 
-    static clone(encoding: any, result = new (TerrainEncoding as any)()): TerrainEncoding | undefined {
+    static clone(encoding: any, result = new (TerrainEncoding as any)()): any {
         if (!defined(encoding)) {
             return undefined;
         }

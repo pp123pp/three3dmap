@@ -15,7 +15,7 @@
  * @param {RequestType} [options.type=RequestType.OTHER] The type of request.
  */
 
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import { RequestState } from './RequestState';
 import { RequestType } from './RequestType';

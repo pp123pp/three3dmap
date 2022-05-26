@@ -3,11 +3,11 @@ import Cartesian2 from '@/Core/Cartesian2';
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartesian4 from '@/Core/Cartesian4';
 import Cartographic from '@/Core/Cartographic';
-import { CesiumColor } from '@/Core/CesiumColor';
-import { CesiumMath } from '@/Core/CesiumMath';
+import CesiumColor from '@/Core/CesiumColor';
+import CesiumMath from '@/Core/CesiumMath';
 import CesiumMatrix4 from '@/Core/CesiumMatrix4';
 import { combine } from '@/Core/combine';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import DeveloperError from '@/Core/DeveloperError';
 import EllipsoidTerrainProvider from '@/Core/EllipsoidTerrainProvider';
@@ -24,11 +24,11 @@ import { TileBoundingRegion } from '@/Core/TileBoundingRegion';
 import Visibility from '@/Core/Visibility';
 import { WebMercatorProjection } from '@/Core/WebMercatorProjection';
 import { TileMaterial } from '@/Material/TileMaterial';
-import { ContextLimits } from '@/Renderer/ContextLimits';
+import ContextLimits from '@/Renderer/ContextLimits';
 import DrawMeshCommand from '@/Renderer/DrawMeshCommand';
 import TileMeshCommand from '@/Renderer/TileMeshCommand';
 import { DoubleSide, MeshNormalMaterial, OrthographicCamera, SphereBufferGeometry } from 'three';
-import { FrameState } from './FrameState';
+import FrameState from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
@@ -294,10 +294,6 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
 
     const mesh = surfaceTile.renderedMesh as TerrainMesh;
 
-    if (!defined(mesh)) {
-        debugger;
-    }
-
     let rtc = mesh.center;
 
     const encoding = mesh.encoding;
@@ -413,7 +409,7 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
     do {
         let numberOfDayTextures = 0;
 
-        let command;
+        let command: TileMeshCommand;
         let uniformMap;
 
         if (tileProvider._drawCommands.length <= tileProvider._usedDrawCommands) {
@@ -627,9 +623,6 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
         uniformMapProperties.minMaxHeight.x = encoding.minimumHeight;
         uniformMapProperties.minMaxHeight.y = encoding.maximumHeight;
 
-        if (!defined(encoding.matrix)) {
-            debugger;
-        }
         CesiumMatrix4.clone(encoding.matrix, uniformMapProperties.scaleAndBias);
 
         surfaceShaderSetOptions.numberOfDayTextures = numberOfDayTextures;
@@ -651,29 +644,12 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
         // surfaceShaderSetOptions.showUndergroundColor = showUndergroundColor;
         surfaceShaderSetOptions.translucent = translucent;
 
-        // debugger;
-
-        // if (!defined((surfaceTile.renderedMesh as TerrainMesh).geometry.index?.array)) {
-        //     debugger;
-        // }
-
         // let count = (surfaceTile.renderedMesh as TerrainMesh).indices.length;
         // if (!showSkirts) {
         //     count = (surfaceTile.renderedMesh as TerrainMesh).indexCountWithoutSkirts;
         // }
 
         command.geometry = surfaceTile.getGeometry(frameState.context);
-
-        const material = command.material;
-
-        material.dayTextures = uniformMapProperties.dayTextures;
-        material.dayTextureTranslationAndScale = uniformMapProperties.dayTextureTranslationAndScale;
-        material.dayTextureTexCoordsRectangle = uniformMapProperties.dayTextureTexCoordsRectangle;
-        material.initialColor = uniformMapProperties.initialColor;
-        material.tileRectangle = uniformMapProperties.tileRectangle;
-        material.minMaxHeight = uniformMapProperties.minMaxHeight;
-        material.scaleAndBias = uniformMapProperties.scaleAndBias;
-        material.center3D = uniformMapProperties.center3D;
 
         // command.position.copy(uniformMapProperties.rtc);
 
@@ -694,8 +670,22 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
             command.orientedBoundingBox = OrientedBoundingBox.clone(tileBoundingRegion.boundingVolume, orientedBoundingBox);
         }
 
-        command.updateMaterial();
-        frameState.commandList.push(command);
+        command.updateMaterial(uniformMapProperties);
+
+        const material = command.material as TileMaterial;
+
+        material.dayTextures = uniformMapProperties.dayTextures;
+        material.dayTextureTranslationAndScale = uniformMapProperties.dayTextureTranslationAndScale;
+        material.dayTextureTexCoordsRectangle = uniformMapProperties.dayTextureTexCoordsRectangle;
+        material.initialColor = uniformMapProperties.initialColor;
+        material.tileRectangle = uniformMapProperties.tileRectangle;
+        material.minMaxHeight = uniformMapProperties.minMaxHeight;
+        material.scaleAndBias = uniformMapProperties.scaleAndBias;
+        material.center3D = uniformMapProperties.center3D;
+
+        if (frameState.cullingVolume.computeVisibility(command.boundingVolume) !== Intersect.OUTSIDE) {
+            frameState.commandList.push(command);
+        }
 
         // renderState = otherPassesRenderState;
         initialColor = otherPassesInitialColor;

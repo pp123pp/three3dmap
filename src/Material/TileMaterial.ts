@@ -1,5 +1,10 @@
+import Cartesian2 from '@/Core/Cartesian2';
+import Cartesian3 from '@/Core/Cartesian3';
+import Cartesian4 from '@/Core/Cartesian4';
+import CesiumMatrix4 from '@/Core/CesiumMatrix4';
 import defined from '@/Core/defined';
-import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, Texture } from 'three';
+import { destroyObject } from '@/Core/destroyObject';
+import { ShaderMaterial, Vector2, Vector4, Matrix4, Vector3, Texture, CanvasTexture, Color } from 'three';
 
 const vertexShader = `
 
@@ -122,7 +127,7 @@ void main(){
 
 `;
 
-const fragmentShader = `
+export const tileMaterialFS = `
 #include <common>
 #include <packing>
 #include <logdepthbuf_pars_fragment>
@@ -212,34 +217,15 @@ vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
 {
     vec4 color = initialColor;
 
-    // #pragma unroll_loop_start
-    // for ( int i = 0; i < TEXTURE_UNITS; i ++ ) {
-
-    //     color = sampleAndBlend(
-    //         color,
-    //         u_dayTextures[ i ],
-    //         u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
-    //         u_dayTextureTexCoordsRectangle[ i ],
-    //         u_dayTextureTranslationAndScale[ i ],
-    //         1.0,
-    //         0.0,
-    //         0.0,
-    //         0.0,
-    //         0.0,
-    //         0.0,
-    //         0.0
-    //     );
-
-    // }
-    // #pragma unroll_loop_end
-
+    #pragma unroll_loop_start
+    for ( int i = 0; i < TEXTURE_UNITS; i ++ ) {
 
         color = sampleAndBlend(
             color,
-            u_dayTextures[ 0 ],
-            u_dayTextureUseWebMercatorT[ 0 ] ? textureCoordinates.xz : textureCoordinates.xy,
-            u_dayTextureTexCoordsRectangle[ 0 ],
-            u_dayTextureTranslationAndScale[ 0 ],
+            u_dayTextures[ i ],
+            u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
+            u_dayTextureTexCoordsRectangle[ i ],
+            u_dayTextureTranslationAndScale[ i ],
             1.0,
             0.0,
             0.0,
@@ -248,6 +234,25 @@ vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
             0.0,
             0.0
         );
+
+    }
+    #pragma unroll_loop_end
+
+
+        // color = sampleAndBlend(
+        //     color,
+        //     u_dayTextures[ 0 ],
+        //     u_dayTextureUseWebMercatorT[ 0 ] ? textureCoordinates.xz : textureCoordinates.xy,
+        //     u_dayTextureTexCoordsRectangle[ 0 ],
+        //     u_dayTextureTranslationAndScale[ 0 ],
+        //     1.0,
+        //     0.0,
+        //     0.0,
+        //     0.0,
+        //     0.0,
+        //     0.0,
+        //     0.0
+        // );
 
     return color;
 }
@@ -284,118 +289,121 @@ class TileMaterial extends ShaderMaterial {
             u_modifiedModelViewProjection: { value: new Matrix4() },
         };
         this.vertexShader = vertexShader;
-        this.fragmentShader = fragmentShader;
-        this.defines.TEXTURE_UNITS = 1;
+        this.fragmentShader = tileMaterialFS;
     }
 
-    get dayTextures(): Texture[] {
+    get dayTextures(): CanvasTexture[] {
         return this.uniforms.u_dayTextures.value;
     }
 
-    set dayTextures(value) {
+    set dayTextures(value: CanvasTexture[]) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_dayTextures.value = value;
     }
 
-    get dayTextureTranslationAndScale() {
+    get dayTextureTranslationAndScale(): Cartesian4[] {
         return this.uniforms.u_dayTextureTranslationAndScale.value;
     }
 
-    set dayTextureTranslationAndScale(value) {
+    set dayTextureTranslationAndScale(value: Cartesian4[]) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_dayTextureTranslationAndScale.value = value;
     }
 
-    get dayTextureTexCoordsRectangle() {
+    get dayTextureTexCoordsRectangle(): Cartesian4[] {
         return this.uniforms.u_dayTextureTexCoordsRectangle.value;
     }
 
-    set dayTextureTexCoordsRectangle(value) {
+    set dayTextureTexCoordsRectangle(value: Cartesian4[]) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_dayTextureTexCoordsRectangle.value = value;
     }
 
-    get diffuse() {
+    get diffuse(): Cartesian4 {
         return this.uniforms.diffuse.value;
     }
 
-    set diffuse(value) {
+    set diffuse(value: Cartesian4) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.diffuse.value.copy(value);
     }
 
-    get initialColor() {
+    get initialColor(): Cartesian4 {
         return this.uniforms.u_initialColor.value;
     }
 
-    set initialColor(value) {
+    set initialColor(value: Cartesian4) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_initialColor.value.copy(value);
     }
 
-    get rtc() {
-        return this.uniforms.rtc.value;
-    }
-
-    set rtc(value) {
-        if (!defined(value)) {
-            return;
-        }
-        this.uniforms.rtc.value.copy(value);
-    }
-
-    get tileRectangle() {
+    get tileRectangle(): Cartesian4 {
         return this.uniforms.u_tileRectangle.value;
     }
 
-    set tileRectangle(value) {
+    set tileRectangle(value: Cartesian4) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_tileRectangle.value.copy(value);
     }
 
-    get minMaxHeight() {
+    get minMaxHeight(): Cartesian2 {
         return this.uniforms.u_minMaxHeight.value;
     }
 
-    set minMaxHeight(value) {
+    set minMaxHeight(value: Cartesian2) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_minMaxHeight.value.copy(value);
     }
 
-    get scaleAndBias() {
+    get scaleAndBias(): CesiumMatrix4 {
         return this.uniforms.u_scaleAndBias.value;
     }
 
-    set scaleAndBias(value) {
+    set scaleAndBias(value: CesiumMatrix4) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_scaleAndBias.value.copy(value);
     }
 
-    get center3D() {
+    get center3D(): Cartesian3 {
         return this.uniforms.u_center3D.value;
     }
 
-    set center3D(value) {
+    set center3D(value: Cartesian3) {
         if (!defined(value)) {
             return;
         }
         this.uniforms.u_center3D.value.copy(value);
+    }
+
+    isDestroyed(): boolean {
+        return false;
+    }
+
+    destroy(): void {
+        for (const texture of this.dayTextures) {
+            texture.dispose();
+            texture.image = null;
+        }
+
+        this.dayTextures = [];
+
+        return destroyObject(this);
     }
 }
 

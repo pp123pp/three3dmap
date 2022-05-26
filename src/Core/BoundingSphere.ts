@@ -1,11 +1,11 @@
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import CesiumMatrix3 from './CesiumMatrix3';
 import CesiumPlane from './CesiumPlane';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
-import { GeographicProjection } from './GeographicProjection';
+import GeographicProjection from './GeographicProjection';
 import Intersect from './Intersect';
 import OrientedBoundingBox from './OrientedBoundingBox';
 import Rectangle from './Rectangle';

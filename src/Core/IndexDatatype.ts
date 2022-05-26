@@ -1,4 +1,4 @@
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import DeveloperError from './DeveloperError';
 import WebGLConstants from './WebGLConstants';
 

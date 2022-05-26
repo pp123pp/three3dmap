@@ -1,5 +1,5 @@
 import Cartesian2 from '@/Core/Cartesian2';
-import { CesiumMath } from '@/Core/CesiumMath';
+import CesiumMath from '@/Core/CesiumMath';
 import defined from '@/Core/defined';
 import { destroyObject } from '@/Core/destroyObject';
 import { KeyboardEventModifier } from '@/Core/KeyboardEventModifier';

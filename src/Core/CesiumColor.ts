@@ -1,4 +1,4 @@
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 
 // #rgb
@@ -259,4 +259,4 @@ class CesiumColor {
         return 'rgba(' + red + ',' + green + ',' + blue + ',' + this.alpha + ')';
     }
 }
-export { CesiumColor };
+export default CesiumColor;

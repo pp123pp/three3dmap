@@ -1,5 +1,5 @@
-import { CesiumColor } from '@/Core/CesiumColor';
-import { defaultValue } from '@/Core/defaultValue';
+import CesiumColor from '@/Core/CesiumColor';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import Emit from '@/Core/Emit';
 import GeographicTilingScheme from '@/Core/GeographicTilingScheme';

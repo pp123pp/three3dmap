@@ -1,11 +1,11 @@
 import Cartesian2 from '@/Core/Cartesian2';
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartesian4 from '@/Core/Cartesian4';
-import { CesiumMath } from '@/Core/CesiumMath';
+import CesiumMath from '@/Core/CesiumMath';
 import CesiumMatrix4 from '@/Core/CesiumMatrix4';
 import CesiumPlane from '@/Core/CesiumPlane';
 import CullingVolume from '@/Core/CullingVolume';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import DeveloperError from '@/Core/DeveloperError';
 

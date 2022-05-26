@@ -1,4 +1,4 @@
-class HeadingPitchRoll {
+export default class HeadingPitchRoll {
     heading: number;
     pitch: number;
     roll: number;
@@ -23,5 +23,3 @@ class HeadingPitchRoll {
         this.roll = roll;
     }
 }
-
-export { HeadingPitchRoll };

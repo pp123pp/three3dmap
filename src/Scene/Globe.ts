@@ -2,7 +2,7 @@ import BoundingSphere from '@/Core/BoundingSphere';
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartographic from '@/Core/Cartographic';
 import CesiumRay from '@/Core/CesiumRay';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import Ellipsoid from '@/Core/Ellipsoid';
 import EllipsoidTerrainProvider from '@/Core/EllipsoidTerrainProvider';
@@ -11,7 +11,7 @@ import IntersectionTests from '@/Core/IntersectionTests';
 import { Object3DCollection } from '@/Core/Object3DCollection';
 import Rectangle from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
-import { FrameState } from './FrameState';
+import FrameState from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
 import GlobeSurfaceTileProvider from './GlobeSurfaceTileProvider';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
@@ -49,7 +49,7 @@ class Globe extends Object3DCollection {
 
     _terrainProviderChanged = new Emit();
 
-    maximumScreenSpaceError = 2;
+    maximumScreenSpaceError = 4;
     _imageryLayerCollection: ImageryLayerCollection;
 
     /**
@@ -180,12 +180,11 @@ class Globe extends Object3DCollection {
     }
 
     render(frameState: FrameState): void {
-        const surface = this._surface;
-        const pass = frameState.passes;
-
-        if (pass.render) {
-            surface.render(frameState);
+        if (!this.visible) {
+            return;
         }
+
+        this._surface.render(frameState);
     }
 
     beginFrame(frameState: FrameState): void {

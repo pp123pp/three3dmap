@@ -1,5 +1,5 @@
 import { combine } from '@/Core/combine';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import { FeatureDetection } from '@/Core/FeatureDetection';
 import { ScreenSpaceEventHandler } from '@/Core/ScreenSpaceEventHandler';

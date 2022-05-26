@@ -1,7 +1,7 @@
 import Cartesian2 from '@/Core/Cartesian2';
 import { combine } from '@/Core/combine';
 import Credit from '@/Core/Credit';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import DeveloperError from '@/Core/DeveloperError';
 import Ellipsoid from '@/Core/Ellipsoid';

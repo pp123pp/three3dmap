@@ -1,11 +1,11 @@
 import Cartesian3 from '@/Core/Cartesian3';
-import { CesiumColor } from '@/Core/CesiumColor';
+import CesiumColor from '@/Core/CesiumColor';
 import { incrementWrap } from '@/Core/CesiumMath';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import Ellipsoid from '@/Core/Ellipsoid';
 import Emit from '@/Core/Emit';
-import { GeographicProjection } from '@/Core/GeographicProjection';
+import GeographicProjection from '@/Core/GeographicProjection';
 import { PrimitiveCollection } from '@/Core/PrimitiveCollection';
 import { RenderCollection } from '@/Core/RenderCollection';
 import RequestScheduler from '@/Core/RequestScheduler';
@@ -17,7 +17,7 @@ import MapRenderer from '@/Renderer/MapRenderer';
 import { Scene, Vector2, WebGLRendererParameters, WebGLRenderTarget } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposerCollection } from './EffectComposerCollection';
-import { FrameState } from './FrameState';
+import FrameState from './FrameState';
 import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import MapCamera from './MapCamera';
@@ -266,8 +266,6 @@ export default class MapScene extends Scene {
 
         const ellipsoid = defaultValue(this.mapProjection.ellipsoid, Ellipsoid.WGS84);
         this._globe = new Globe(ellipsoid);
-
-        this.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
 
         this.frustumCulled = false;
     }

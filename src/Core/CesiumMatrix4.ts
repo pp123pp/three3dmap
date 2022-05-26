@@ -2,7 +2,7 @@ import { Matrix4 } from 'three';
 import Cartesian3 from './Cartesian3';
 import Cartesian4 from './Cartesian4';
 import CesiumMatrix3 from './CesiumMatrix3';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 
 export default class CesiumMatrix4 extends Matrix4 {

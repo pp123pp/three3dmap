@@ -16,7 +16,7 @@
  * @param {Error} [error] The error or exception that occurred, if any.
  */
 
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Emit from './Emit';
 import formatError from './formatError';

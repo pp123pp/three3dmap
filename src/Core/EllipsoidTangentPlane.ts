@@ -4,7 +4,7 @@ import Cartesian4 from './Cartesian4';
 import CesiumMatrix4 from './CesiumMatrix4';
 import CesiumPlane from './CesiumPlane';
 import CesiumRay from './CesiumRay';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 import IntersectionTests from './IntersectionTests';

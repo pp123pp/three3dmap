@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import Cartesian4 from './Cartesian4';
-import { CesiumMath } from './CesiumMath';
-import { defaultValue } from './defaultValue';
+import CesiumMath from './CesiumMath';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 import Ellipsoid from './Ellipsoid';

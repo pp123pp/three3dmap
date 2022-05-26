@@ -1,10 +1,10 @@
-import { AxisAlignedBoundingBox } from './AxisAlignedBoundingBox';
+import AxisAlignedBoundingBox from './AxisAlignedBoundingBox';
 import BoundingSphere from './BoundingSphere';
 import Cartesian2 from './Cartesian2';
 import Cartesian3 from './Cartesian3';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import CesiumMatrix4 from './CesiumMatrix4';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 import EllipsoidalOccluder from './EllipsoidalOccluder';

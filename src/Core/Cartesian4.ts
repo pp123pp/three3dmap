@@ -1,5 +1,5 @@
 import { Vector4 } from 'three';
-import { CesiumColor } from './CesiumColor';
+import CesiumColor from './CesiumColor';
 import defined from './defined';
 
 export default class Cartesian4 extends Vector4 {

@@ -2,7 +2,7 @@ import { Mesh, Object3D } from 'three';
 import defined from '../Core/defined';
 import { destroyObject } from '../Core/destroyObject';
 import { Object3DCollection } from '../Core/Object3DCollection';
-import { FrameState } from '../Scene/FrameState';
+import FrameState from '../Scene/FrameState';
 
 declare module 'three/src/core/Object3D' {
     export interface Object3D {

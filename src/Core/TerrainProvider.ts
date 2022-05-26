@@ -1,4 +1,4 @@
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 import Ellipsoid from './Ellipsoid';

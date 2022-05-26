@@ -1,8 +1,8 @@
 import defined from './defined';
 import Cartographic from './Cartographic';
 
-import { CesiumMath } from './CesiumMath';
-import { defaultValue } from './defaultValue';
+import CesiumMath from './CesiumMath';
+import defaultValue from './defaultValue';
 
 /**
  * A two dimensional region specified as longitude and latitude coordinates.

@@ -3,7 +3,7 @@ import Cartographic from '@/Core/Cartographic';
 import CesiumMatrix4 from '@/Core/CesiumMatrix4';
 import CesiumPlane from '@/Core/CesiumPlane';
 import CullingVolume from '@/Core/CullingVolume';
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import { MathUtils, PerspectiveCamera } from 'three';
 import { IMapCamera } from './MapCamera';

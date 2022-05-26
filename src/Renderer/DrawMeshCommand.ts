@@ -1,6 +1,6 @@
 import BoundingSphere from '@/Core/BoundingSphere';
 import defined from '@/Core/defined';
-import { FrameState } from '@/Scene/FrameState';
+import FrameState from '@/Scene/FrameState';
 import { Mesh } from 'three';
 
 export default class DrawMeshCommand extends Mesh {

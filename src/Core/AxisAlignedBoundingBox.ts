@@ -1,6 +1,6 @@
 import Cartesian3 from './Cartesian3';
 import CesiumPlane from './CesiumPlane';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Intersect from './Intersect';
 
@@ -144,4 +144,4 @@ class AxisAlignedBoundingBox {
     }
 }
 
-export { AxisAlignedBoundingBox };
+export default AxisAlignedBoundingBox;

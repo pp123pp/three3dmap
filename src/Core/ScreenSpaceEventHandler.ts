@@ -1,6 +1,6 @@
 import { Vector2 } from 'three';
-import { AssociativeArray } from './AssociativeArray';
-import { defaultValue } from './defaultValue';
+import AssociativeArray from './AssociativeArray';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import { destroyObject } from './destroyObject';
 import DeveloperError from './DeveloperError';

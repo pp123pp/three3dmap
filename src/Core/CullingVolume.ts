@@ -1,5 +1,5 @@
 import { Frustum } from 'three';
-import { AxisAlignedBoundingBox } from './AxisAlignedBoundingBox';
+import AxisAlignedBoundingBox from './AxisAlignedBoundingBox';
 import BoundingSphere from './BoundingSphere';
 import CesiumPlane from './CesiumPlane';
 import defined from './defined';

@@ -4,9 +4,9 @@ import { BufferGeometry, Float32BufferAttribute, InterleavedBuffer, InterleavedB
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
 import createVerticesFromHeightmap from './createVerticesFromHeightmap';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
-import { GeographicProjection } from './GeographicProjection';
+import GeographicProjection from './GeographicProjection';
 import HeightmapEncoding from './HeightmapEncoding';
 import HeightmapTessellator from './HeightmapTessellator';
 import OrientedBoundingBox from './OrientedBoundingBox';

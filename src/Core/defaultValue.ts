@@ -7,4 +7,4 @@ function defaultValue<U>(a: any, b: U): U {
 
 defaultValue.EMPTY_OBJECT = Object.freeze({}) as any;
 
-export { defaultValue };
+export default defaultValue;

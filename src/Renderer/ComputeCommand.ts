@@ -1,4 +1,4 @@
-import { defaultValue } from '@/Core/defaultValue';
+import defaultValue from '@/Core/defaultValue';
 import { BufferGeometry, ShaderMaterial } from 'three';
 import { ComputeEngine } from './ComputeEngine';
 

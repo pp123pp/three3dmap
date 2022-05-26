@@ -5,7 +5,8 @@ import Cartesian2 from './Core/Cartesian2';
 import Cartesian3 from './Core/Cartesian3';
 import CesiumMatrix4 from './Core/CesiumMatrix4';
 import { SceneMode } from './Core/SceneMode';
-// import TileCoordinatesImageryProvider from './Scene/TileCoordinatesImageryProvider';
+import TileCoordinatesImageryProvider from './Scene/TileCoordinatesImageryProvider';
+import WebMapTileServiceImageryProvider from './Scene/WebMapTileServiceImageryProvider';
 import './Widgets/CesiumWidget.css';
 import Widgets from './Widgets/Widgets';
 
@@ -16,6 +17,30 @@ const widget = new Widgets('app', {
 });
 
 const { scene, camera } = widget;
+
+const mapToken = '39d358c825ec7e59142958656c0a6864'; // 盈嘉企业开发者秘钥
+// '3669131581c051178afabed885766ac2', //天地图广州---容易出错
+// '993470e78cc4324e1023721f57b23640',
+// '5f5ced578c88ac399b0691415c56a9d7',
+// 'a1da75892570d7add77b51f40a1d72c4'
+
+// scene.imageryLayers.addImageryProvider(
+//     new WebMapTileServiceImageryProvider({
+//         // 影像底图
+//         url: 'https://{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&tk=' + mapToken,
+//         subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+//         // url: 'https://{s}.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{TileMatrix}/{TileCol}/{TileRow}/512/png8?apikey=J0IJdYzKDYS3nHVDDEWETIqK3nAcxqW42vz7xeSq61M',
+//         // subdomains: ['1', '2', '3', '4'],
+//         maximumLevel: 17, // 定义最大缩放级别
+//         layer: 'tdtImgLayer',
+//         style: 'default',
+//         format: 'image/jpeg',
+//         tileMatrixSetID: 'GoogleMapsCompatible', // 使用谷歌的瓦片切片方式
+//     })
+// );
+
+scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
+// scene.globe.visible = false;
 
 const axesHelper = new AxesHelper(500000000);
 scene.addObject(axesHelper);
@@ -89,6 +114,6 @@ gui.add(params, 'moveRight').onChange(() => {
     console.log(camera);
 });
 
-camera.changed.addEventListener(() => {
-    console.log('aaa');
-});
+// camera.changed.addEventListener(() => {
+//     console.log(camera.position.z);
+// });

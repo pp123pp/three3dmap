@@ -1,6 +1,6 @@
 import defined from '@/Core/defined';
 import { Object3DCollection } from '@/Core/Object3DCollection';
-import { FrameState } from '@/Scene/FrameState';
+import FrameState from '@/Scene/FrameState';
 
 class PrimitiveCollection extends Object3DCollection {
     _primitives: any[];

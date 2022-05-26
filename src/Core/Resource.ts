@@ -1,4 +1,4 @@
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import { clone } from './clone';
 import { combine } from './combine';
@@ -17,6 +17,7 @@ import { URI as Uri } from './../ThirdParty/Uri';
 import DeveloperError from './DeveloperError';
 import RequestErrorEvent from './RequestErrorEvent';
 import defer from './defer';
+import getImagePixels from './getImagePixels';
 
 let supportsImageBitmapOptionsPromise: any;
 
@@ -427,6 +428,13 @@ class Resource {
         // Until the HTML folks figure out what to do about this, we need to actually try loading an image to
         // know if this browser supports passing options to the createImageBitmap function.
         // https://github.com/whatwg/html/pull/4248
+        //
+        // We also need to check whether the colorSpaceConversion option is supported.
+        // We do this by loading a PNG with an embedded color profile, first with
+        // colorSpaceConversion: "none" and then with colorSpaceConversion: "default".
+        // If the pixel color is different then we know the option is working.
+        // As of Webkit 17612.3.6.1.6 the createImageBitmap promise resolves but the
+        // option is not actually supported.
         if (defined(supportsImageBitmapOptionsPromise)) {
             return supportsImageBitmapOptionsPromise;
         }
@@ -436,22 +444,26 @@ class Resource {
             return supportsImageBitmapOptionsPromise;
         }
 
-        const imageDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQImWP4////fwAJ+wP9CNHoHgAAAABJRU5ErkJggg==';
+        const imageDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAABGdBTUEAAE4g3rEiDgAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAADElEQVQI12Ng6GAAAAEUAIngE3ZiAAAAAElFTkSuQmCC';
 
         supportsImageBitmapOptionsPromise = Resource.fetchBlob({
             url: imageDataUri,
         })
             .then(function (blob: any) {
-                return createImageBitmap(blob, {
-                    imageOrientation: 'flipY',
-                    premultiplyAlpha: 'none',
-                    colorSpaceConversion: 'none',
-                });
+                const imageBitmapOptions: any = {
+                    imageOrientation: 'flipY', // default is "none"
+                    premultiplyAlpha: 'none', // default is "default"
+                    colorSpaceConversion: 'none', // default is "default"
+                };
+                return Promise.all([createImageBitmap(blob, imageBitmapOptions), createImageBitmap(blob)]);
             })
-            .then(function (imageBitmap: any) {
-                return true;
+            .then(function (imageBitmaps: any) {
+                // Check whether the colorSpaceConversion option had any effect on the green channel
+                const colorWithOptions = getImagePixels(imageBitmaps[0]);
+                const colorWithDefaults = getImagePixels(imageBitmaps[1]);
+                return colorWithOptions[1] !== colorWithDefaults[1];
             })
-            .otherwise(function () {
+            .catch(function () {
                 return false;
             });
 
@@ -953,7 +965,7 @@ Resource._Implementations.createImage = function (request: any, crossOrigin: any
             // We can only use ImageBitmap if we can flip on decode.
             // See: https://github.com/CesiumGS/cesium/pull/7579#issuecomment-466146898
             if (!(supportsImageBitmap && preferImageBitmap)) {
-                loadImageElement(url, crossOrigin, deferred);
+                Resource._Implementations.loadImageElement(url, crossOrigin, deferred);
                 return;
             }
             const responseType = 'blob';
@@ -967,9 +979,9 @@ Resource._Implementations.createImage = function (request: any, crossOrigin: any
                 };
             }
             return xhrDeferred.promise
-                .then(function (blob: any) {
+                .then(function (blob) {
                     if (!defined(blob)) {
-                        deferred.reject(new RuntimeError('Successfully retrieved ' + url + ' but it contained no content.'));
+                        deferred.reject(new RuntimeError(`Successfully retrieved ${url} but it contained no content.`));
                         return;
                     }
 
@@ -979,9 +991,13 @@ Resource._Implementations.createImage = function (request: any, crossOrigin: any
                         skipColorSpaceConversion: skipColorSpaceConversion,
                     });
                 })
-                .then(deferred.resolve);
+                .then(function (image) {
+                    deferred.resolve(image);
+                });
         })
-        .otherwise(deferred.reject);
+        .catch(function (e: any) {
+            deferred.reject(e);
+        });
 };
 
 function decodeDataUriText(isBase64: any, data: any) {

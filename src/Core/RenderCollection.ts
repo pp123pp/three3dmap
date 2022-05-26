@@ -1,5 +1,5 @@
 import { Object3DCollection } from '@/Core/Object3DCollection';
-import { FrameState } from '@/Scene/FrameState';
+import FrameState from '@/Scene/FrameState';
 import { Frustum } from 'three';
 
 class RenderCollection extends Object3DCollection {

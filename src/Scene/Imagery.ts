@@ -3,7 +3,7 @@ import defined from '@/Core/defined';
 import { destroyObject } from '@/Core/destroyObject';
 import Rectangle from '@/Core/Rectangle';
 import { Request } from '@/Core/Request';
-import { FrameState } from './FrameState';
+import FrameState from './FrameState';
 import { ImageryLayer } from './ImageryLayer';
 
 import { ImageryState } from './ImageryState';
@@ -83,7 +83,9 @@ class Imagery {
             }
 
             if (defined(this.textureWebMercator) && this.texture !== this.textureWebMercator) {
-                this.textureWebMercator.destroy();
+                // this.textureWebMercator.destroy();
+                this.textureWebMercator.dispose();
+                this.textureWebMercator = null;
             }
 
             destroyObject(this);

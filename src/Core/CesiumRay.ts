@@ -1,6 +1,6 @@
 import { Ray } from 'three';
 import Cartesian3 from './Cartesian3';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 
 export default class CesiumRay extends Ray {
     constructor(origin = new Cartesian3(), direction = new Cartesian3()) {

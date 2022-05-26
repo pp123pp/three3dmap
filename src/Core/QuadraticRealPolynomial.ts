@@ -1,4 +1,4 @@
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 
 function addWithCancellationCheck(left: number, right: number, tolerance: number) {
     const difference = left + right;

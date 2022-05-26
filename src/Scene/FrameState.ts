@@ -246,4 +246,4 @@ class FrameState {
     }
 }
 
-export { FrameState };
+export default FrameState;

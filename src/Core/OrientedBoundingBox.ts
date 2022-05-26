@@ -1,10 +1,10 @@
 import Cartesian2 from './Cartesian2';
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import CesiumMatrix3 from './CesiumMatrix3';
 import CesiumPlane from './CesiumPlane';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 import Ellipsoid from './Ellipsoid';

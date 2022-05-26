@@ -1,5 +1,5 @@
 import { URI as Uri } from '../ThirdParty/Uri';
-import { defaultValue } from './defaultValue';
+import defaultValue from './defaultValue';
 import defer from './defer';
 import defined from './defined';
 import Emit from './Emit';

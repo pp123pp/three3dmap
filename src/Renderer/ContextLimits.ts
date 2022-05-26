@@ -12,4 +12,4 @@ const ContextLimits = {
     },
 };
 
-export { ContextLimits };
+export default ContextLimits;

@@ -1,7 +1,7 @@
 import { Plane } from 'three';
 import Cartesian3 from './Cartesian3';
 import Cartesian4 from './Cartesian4';
-import { CesiumMath } from './CesiumMath';
+import CesiumMath from './CesiumMath';
 import DeveloperError from './DeveloperError';
 
 const scratchNormal = new Cartesian3();

@@ -1,7 +1,7 @@
 import { Quaternion } from 'three';
 import Cartesian3 from './Cartesian3';
 import defined from './defined';
-import { HeadingPitchRoll } from './HeadingPitchRoll';
+import HeadingPitchRoll from './HeadingPitchRoll';
 
 let fromAxisAngleScratch = new Cartesian3();
 
