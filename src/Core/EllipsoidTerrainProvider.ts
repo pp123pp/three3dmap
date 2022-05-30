@@ -4,7 +4,7 @@ import Ellipsoid from './Ellipsoid';
 import Emit from './Emit';
 import GeographicTilingScheme from './GeographicTilingScheme';
 import { HeightmapTerrainData } from './HeightmapTerrainData';
-import { Request } from './Request';
+import Request from './Request';
 import TerrainProvider from './TerrainProvider';
 
 interface IEllipsoidTerrainProvider {

@@ -1,4 +1,4 @@
-import { Check } from './Check';
+import Check from './Check';
 import defined from './defined';
 
 function compareNumber(a: number, b: number): number {

@@ -116,4 +116,4 @@ Check.typeOf.number.lessThanOrEquals = function (name: string, test: any, limit:
     }
 };
 
-export { Check };
+export default Check;

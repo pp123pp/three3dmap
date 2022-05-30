@@ -33,6 +33,7 @@ export default class Buffer {
         }
 
         const gl = options.context.gl;
+
         // const buffer = gl.createBuffer();
         // gl.bindBuffer(bufferTarget, buffer);
         // gl.bufferData(bufferTarget, hasArray ? typedArray : sizeInBytes, usage);
@@ -43,6 +44,7 @@ export default class Buffer {
         this._bufferTarget = bufferTarget;
         this._sizeInBytes = sizeInBytes;
         this._usage = usage;
+
         this._typedArray = typedArray;
 
         // this._buffer = buffer as WebGLBuffer;

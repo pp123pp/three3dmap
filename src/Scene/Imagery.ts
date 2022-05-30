@@ -2,7 +2,7 @@
 import defined from '@/Core/defined';
 import { destroyObject } from '@/Core/destroyObject';
 import Rectangle from '@/Core/Rectangle';
-import { Request } from '@/Core/Request';
+import Request from '@/Core/Request';
 import FrameState from './FrameState';
 import { ImageryLayer } from './ImageryLayer';
 

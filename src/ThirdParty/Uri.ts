@@ -47,21 +47,21 @@ function replaceAuthority(str: any, p1: any, p2: any, p3: any) {
     return (p1 || '') + p2.toLowerCase() + (p3 || '');
 }
 
-class URI {
+class Uri {
     scheme: any;
     authority: any;
     path: any;
     query: any;
     fragment: any;
 
-    constructor(uri?: string | URI) {
+    constructor(uri?: string | Uri) {
         this.scheme = null;
         this.authority = null;
         this.path = null;
         this.query = null;
         this.fragment = null;
 
-        if (uri instanceof URI) {
+        if (uri instanceof Uri) {
             // copy constructor
             this.scheme = uri.scheme;
             this.authority = uri.authority;
@@ -185,7 +185,7 @@ class URI {
      * See RFC 3986 section 5.2
      */
     resolve(baseURI: any) {
-        const uri = new URI();
+        const uri = new Uri();
         if (this.scheme) {
             uri.scheme = this.scheme;
             uri.authority = this.authority;
@@ -290,4 +290,4 @@ class URI {
     }
 }
 
-export { URI };
+export default Uri;

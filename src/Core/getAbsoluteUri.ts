@@ -2,7 +2,7 @@ import defaultValue from './defaultValue';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 
-import { URI as Uri } from './../ThirdParty/Uri';
+import Uri from './../ThirdParty/Uri';
 
 /**
  * Given a relative Uri and a base Uri, returns the absolute Uri of the relative Uri.

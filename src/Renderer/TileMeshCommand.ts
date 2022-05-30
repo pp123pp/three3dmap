@@ -33,12 +33,26 @@ export default class TileMeshCommand extends Mesh {
         // this.pass = CommandRenderPass.OPAQUE;
     }
 
-    updateMaterial(uniformMapProperties: any): void {
-        let material = this.material as TileMaterial;
-
+    updateMaterial(uniformMapProperties: any, surfaceShaderSetOptions: any): void {
         const isBITS12 = defined(this.geometry.attributes['compressed0']) ? true : false;
 
-        if ((isBITS12 && !defined(material.defines['QUANTIZATION_BITS12'])) || material.dayTextures.length !== material.defines['TEXTURE_UNITS']) {
+        const material = this.material as TileMaterial;
+
+        if (!material.isTileMaterial) {
+            (this.material as Material).dispose();
+            this.material = new TileMaterial({
+                uniformMapProperties,
+                surfaceShaderSetOptions,
+                isBITS12,
+                materialOptions: {
+                    side: DoubleSide,
+                },
+            });
+
+            return;
+        }
+
+        if ((isBITS12 && !defined(material.defines['QUANTIZATION_BITS12'])) || uniformMapProperties.dayTextures.length !== material.defines['TEXTURE_UNITS']) {
             // material.defines['QUANTIZATION_BITS12'] = '';
 
             // material.fragmentShader = tileMaterialFS;
@@ -50,16 +64,14 @@ export default class TileMeshCommand extends Mesh {
 
             material.dispose();
 
-            material = new TileMaterial({
-                side: DoubleSide,
+            this.material = new TileMaterial({
+                uniformMapProperties,
+                surfaceShaderSetOptions,
+                isBITS12,
+                materialOptions: {
+                    side: DoubleSide,
+                },
             });
-
-            material.defines['QUANTIZATION_BITS12'] = '';
-            material.defines.TEXTURE_UNITS = uniformMapProperties.dayTextures.length;
-
-            material.fragmentShader = material.fragmentShader.replace(/TEXTURE_UNITS/g, uniformMapProperties.dayTextures.length as any);
-
-            this.material = material;
 
             return;
         }
@@ -78,13 +90,14 @@ export default class TileMeshCommand extends Mesh {
 
             material.dispose();
 
-            material = new TileMaterial({
-                side: DoubleSide,
+            this.material = new TileMaterial({
+                uniformMapProperties,
+                surfaceShaderSetOptions,
+                isBITS12,
+                materialOptions: {
+                    side: DoubleSide,
+                },
             });
-            material.defines.TEXTURE_UNITS = uniformMapProperties.dayTextures.length;
-
-            material.fragmentShader = material.fragmentShader.replace(/TEXTURE_UNITS/g, uniformMapProperties.dayTextures.length as any);
-            this.material = material;
             return;
         }
     }

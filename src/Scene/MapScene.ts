@@ -1,4 +1,3 @@
-import Cartesian3 from '@/Core/Cartesian3';
 import CesiumColor from '@/Core/CesiumColor';
 import { incrementWrap } from '@/Core/CesiumMath';
 import defaultValue from '@/Core/defaultValue';
@@ -15,15 +14,12 @@ import { ComputeEngine } from '@/Renderer/ComputeEngine';
 import Context from '@/Renderer/Context';
 import MapRenderer from '@/Renderer/MapRenderer';
 import { Scene, Vector2, WebGLRendererParameters, WebGLRenderTarget } from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposerCollection } from './EffectComposerCollection';
 import FrameState from './FrameState';
 import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import MapCamera from './MapCamera';
-import PerspectiveFrustumCamera from './PerspectiveFrustumCamera';
 import ScreenSpaceCameraController from './ScreenSpaceCameraController';
-import TileCoordinatesImageryProvider from './TileCoordinatesImageryProvider';
 
 interface SceneOptions {
     renderState?: WebGLRendererParameters;
@@ -170,15 +166,7 @@ function executeCommandsInViewport(firstViewport: boolean, scene: MapScene, back
         executeComputeCommands(scene);
     }
 
-    // executeCommands(scene, passState);
-    // scene.renderer.clear();
-    // scene.renderer.render(scene, scene.activeCamera);
-    // scene.renderer.autoClear = false;
-    // scene.renderer.clear();
-    // scene.skyBox.render();
-    // scene.effectComposerCollection.render();
-
-    scene.renderer.render(scene, scene.camera.frustum);
+    scene.effectComposerCollection.render();
 }
 
 export default class MapScene extends Scene {
@@ -237,18 +225,7 @@ export default class MapScene extends Scene {
             aspect: this.canvas.clientWidth / this.canvas.clientHeight,
             near: 0.1,
             far: 10000000000,
-            // far: 1000,
         });
-
-        // this.mapCamera.position.set(63916973.15163071, 63916973.933613418, 9994134.16404095);
-        // camera.position.set(10, 10, 10);
-        // camera.lookAt(63916973.15163071, 63916973.933613418, 0);
-        // camera.rotation.set(0, 0, 0);
-
-        // const ps = new Cartesian3(63916973.15163071, 3088494.933613418, 9994134.16404095);
-        // this.mapCamera.setView({
-        //     destination: ps,
-        // });
 
         this.computeEngine = new ComputeEngine(this, this.context);
 
@@ -259,8 +236,6 @@ export default class MapScene extends Scene {
         this.add(this.renderCollection);
 
         this.effectComposerCollection = new EffectComposerCollection(this);
-
-        // this.screenSpaceCameraController = new OrbitControls(this.camera.frustum, this.canvas);
 
         this.screenSpaceCameraController = new ScreenSpaceCameraController(this);
 

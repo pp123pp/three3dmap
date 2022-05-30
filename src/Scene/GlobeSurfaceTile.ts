@@ -10,8 +10,8 @@ import IndexDatatype from '@/Core/IndexDatatype';
 import IntersectionTests from '@/Core/IntersectionTests';
 import OrientedBoundingBox from '@/Core/OrientedBoundingBox';
 import QuadtreeTileLoadState from '@/Core/QuadtreeTileLoadState';
-import { Request } from '@/Core/Request';
-import { RequestState } from '@/Core/RequestState';
+import Request from '@/Core/Request';
+import RequestState from '@/Core/RequestState';
 import { RequestType } from '@/Core/RequestType';
 import { SceneMode } from '@/Core/SceneMode';
 import TerrainEncoding from '@/Core/TerrainEncoding';
@@ -69,9 +69,6 @@ function upsample(surfaceTile: GlobeSurfaceTile, tile: QuadtreeTile, frameState:
 
     Promise.resolve(terrainDataPromise)
         .then(function (terrainData) {
-            if (!defined(terrainData)) {
-                debugger;
-            }
             surfaceTile.terrainData = terrainData;
             surfaceTile.terrainState = TerrainState.RECEIVED;
         })
@@ -82,9 +79,6 @@ function upsample(surfaceTile: GlobeSurfaceTile, tile: QuadtreeTile, frameState:
 
 function requestTileGeometry(surfaceTile: GlobeSurfaceTile, terrainProvider: any, x: number, y: number, level: number) {
     function success(terrainData: any) {
-        if (!defined(terrainData)) {
-            debugger;
-        }
         surfaceTile.terrainData = terrainData;
         surfaceTile.terrainState = TerrainState.RECEIVED;
         surfaceTile.request = undefined;
@@ -92,7 +86,6 @@ function requestTileGeometry(surfaceTile: GlobeSurfaceTile, terrainProvider: any
 
     function failure(error: Error) {
         if ((surfaceTile.request as Request).state === RequestState.CANCELLED) {
-            debugger;
             // Cancelled due to low priority - try again later.
             surfaceTile.terrainData = undefined;
             surfaceTile.terrainState = TerrainState.UNLOADED;
@@ -175,7 +168,6 @@ function transform(surfaceTile: GlobeSurfaceTile, frameState: FrameState, terrai
 
     Promise.resolve(meshPromise)
         .then(function (mesh) {
-            // debugger;
             surfaceTile.mesh = mesh;
             surfaceTile.terrainState = TerrainState.TRANSFORMED;
         })
@@ -543,6 +535,20 @@ export default class GlobeSurfaceTile {
 
         if (defined(this.geometry)) {
             this.geometry.dispose();
+            const attributes = this.geometry.attributes;
+
+            for (const key in attributes) {
+                const attr = attributes[key];
+                if ((attr as InterleavedBufferAttribute).isInterleavedBufferAttribute) {
+                    (attributes[key] as any).data.array = null;
+                } else {
+                    (attributes[key] as any).array = null;
+                }
+            }
+
+            (this.geometry.index as any).array = null;
+            this.geometry.dispose();
+
             this.geometry = undefined as any;
         }
 
@@ -649,7 +655,6 @@ export default class GlobeSurfaceTile {
     }
 
     static _freeVertexArray(vertexArray: VertexArray): void {
-        // debugger;
         if (defined(vertexArray)) {
             if (defined(vertexArray)) {
                 const indexBuffer = vertexArray.indexBuffer;

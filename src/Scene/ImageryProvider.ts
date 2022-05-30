@@ -1,6 +1,6 @@
 import defined from '@/Core/defined';
 import DeveloperError from '@/Core/DeveloperError';
-import { Resource } from '@/Core/Resource';
+import Resource from '@/Core/Resource';
 
 class ImageryProvider {
     /**

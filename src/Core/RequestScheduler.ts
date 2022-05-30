@@ -1,4 +1,4 @@
-import { URI as Uri } from '../ThirdParty/Uri';
+import Uri from '../ThirdParty/Uri';
 import defaultValue from './defaultValue';
 import defer from './defer';
 import defined from './defined';
@@ -6,8 +6,8 @@ import Emit from './Emit';
 import { Heap } from './Heap';
 import isBlobUri from './isBlobUri';
 import isDataUri from './isDataUri';
-import { Request } from './Request';
-import { RequestState } from './RequestState';
+import Request from './Request';
+import RequestState from './RequestState';
 
 function sortRequests(a: any, b: any) {
     return a.priority - b.priority;

@@ -31,14 +31,6 @@ export default class DrawMeshCommand extends Mesh {
         // this.pass = CommandRenderPass.OPAQUE;
     }
 
-    get levelId() {
-        return this.owner.levelId;
-    }
-
-    compressVertices() {
-        const geometry = this.geometry;
-    }
-
     update(frameState: FrameState): void {
         (this.material as any).picking = false;
 

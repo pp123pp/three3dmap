@@ -708,7 +708,11 @@ function containsNeededPosition(primitive: QuadtreePrimitive, tile: QuadtreeTile
     return (defined(primitive._cameraPositionCartographic) && Rectangle.contains(rectangle, primitive._cameraPositionCartographic as Cartographic)) || (defined(primitive._cameraReferenceFrameOriginCartographic) && Rectangle.contains(rectangle, primitive._cameraReferenceFrameOriginCartographic as Cartographic));
 }
 
-function visitIfVisible(primitive: QuadtreePrimitive, tile: any, tileProvider: GlobeSurfaceTileProvider, frameState: FrameState, occluders: any, ancestorMeetsSse: boolean, traversalDetails: TraversalDetails) {
+function visitIfVisible(primitive: QuadtreePrimitive, tile: QuadtreeTile, tileProvider: GlobeSurfaceTileProvider, frameState: FrameState, occluders: any, ancestorMeetsSse: boolean, traversalDetails: TraversalDetails) {
+    if (tile.x === 13488 && tile.y === 2668 && tile.level === 13) {
+        debugger;
+    }
+
     if (tileProvider.computeTileVisibility(tile, frameState, occluders) !== Visibility.NONE) {
         return visitTile(primitive, frameState, tile, ancestorMeetsSse, traversalDetails);
     }

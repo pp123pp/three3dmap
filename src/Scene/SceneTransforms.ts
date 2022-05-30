@@ -3,7 +3,6 @@ import Cartesian2 from '@/Core/Cartesian2';
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartesian4 from '@/Core/Cartesian4';
 import Cartographic from '@/Core/Cartographic';
-import CesiumMath from '@/Core/CesiumMath';
 import CesiumMatrix4 from '@/Core/CesiumMatrix4';
 import defined from '@/Core/defined';
 import { SceneMode } from '@/Core/SceneMode';
@@ -17,13 +16,6 @@ const SceneTransforms: any = {};
 const actualPositionScratch = new Cartesian4(0, 0, 0, 1);
 let positionCC = new Cartesian4();
 const scratchViewport = new BoundingRectangle();
-
-const scratchWindowCoord0 = new Cartesian2();
-const scratchWindowCoord1 = new Cartesian2();
-
-const scratchMaxCartographic = new Cartographic(Math.PI, CesiumMath.PI_OVER_TWO);
-const scratchProjectedCartesian = new Cartesian3();
-const scratchCameraPosition = new Cartesian3();
 
 const scratchCartesian4 = new Cartesian4();
 const scratchEyeOffset = new Cartesian3();
@@ -63,55 +55,6 @@ SceneTransforms.wgs84WithEyeOffsetToWindowCoordinates = function (scene: MapScen
 
     const camera = scene.camera;
     const cameraCentered = false;
-
-    if (frameState.mode === SceneMode.SCENE2D) {
-        // const projection = scene.mapProjection;
-        // const maxCartographic = scratchMaxCartographic;
-        // const maxCoord = projection.project(maxCartographic, scratchProjectedCartesian);
-        // const cameraPosition = Cartesian3.clone(camera.position, scratchCameraPosition);
-        // const frustum = camera.frustum.clone();
-        // const viewportTransformation = CesiumMatrix4.computeViewportTransformation(viewport, 0.0, 1.0, new CesiumMatrix4());
-        // const projectionMatrix = camera.frustum.projectionMatrix;
-        // const x = camera.positionWC.y;
-        // const eyePoint = Cartesian3.fromElements(CesiumMath.sign(x) * maxCoord.x - x, 0.0, -camera.positionWC.x);
-        // const windowCoordinates = Transforms.pointToGLWindowCoordinates(projectionMatrix, viewportTransformation, eyePoint);
-        // if (x === 0.0 || windowCoordinates.x <= 0.0 || windowCoordinates.x >= canvas.clientWidth) {
-        //     cameraCentered = true;
-        // } else {
-        //     if (windowCoordinates.x > canvas.clientWidth * 0.5) {
-        //         viewport.width = windowCoordinates.x;
-        //         camera.frustum.right = maxCoord.x - x;
-        //         positionCC = worldToClip(actualPosition, eyeOffset, camera, positionCC);
-        //         SceneTransforms.clipToGLWindowCoordinates(viewport, positionCC, scratchWindowCoord0);
-        //         viewport.x += windowCoordinates.x;
-        //         camera.position.x = -camera.position.x;
-        //         const right = camera.frustum.right;
-        //         camera.frustum.right = -camera.frustum.left;
-        //         camera.frustum.left = -right;
-        //         positionCC = worldToClip(actualPosition, eyeOffset, camera, positionCC);
-        //         SceneTransforms.clipToGLWindowCoordinates(viewport, positionCC, scratchWindowCoord1);
-        //     } else {
-        //         viewport.x += windowCoordinates.x;
-        //         viewport.width -= windowCoordinates.x;
-        //         camera.frustum.left = -maxCoord.x - x;
-        //         positionCC = worldToClip(actualPosition, eyeOffset, camera, positionCC);
-        //         SceneTransforms.clipToGLWindowCoordinates(viewport, positionCC, scratchWindowCoord0);
-        //         viewport.x = viewport.x - viewport.width;
-        //         camera.position.x = -camera.position.x;
-        //         const left = camera.frustum.left;
-        //         camera.frustum.left = -camera.frustum.right;
-        //         camera.frustum.right = -left;
-        //         positionCC = worldToClip(actualPosition, eyeOffset, camera, positionCC);
-        //         SceneTransforms.clipToGLWindowCoordinates(viewport, positionCC, scratchWindowCoord1);
-        //     }
-        //     Cartesian3.clone(cameraPosition, camera.position);
-        //     camera.frustum = frustum.clone();
-        //     result = Cartesian2.clone(scratchWindowCoord0, result);
-        //     if ((result as Cartesian2).x < 0.0 || (result as Cartesian2).x > canvas.clientWidth) {
-        //         (result as Cartesian2).x = scratchWindowCoord1.x;
-        //     }
-        // }
-    }
 
     if (frameState.mode !== SceneMode.SCENE2D || cameraCentered) {
         // View-projection matrix to transform from world coordinates to clip coordinates

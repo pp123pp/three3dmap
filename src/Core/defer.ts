@@ -21,7 +21,7 @@
  * @property {Promise} promise Promise object.
  */
 
-interface IDefer {
+export interface IDefer {
     resolve: Promise<unknown>;
     reject: Promise<unknown>;
     promise: Promise<unknown>;

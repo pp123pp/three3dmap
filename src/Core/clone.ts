@@ -29,4 +29,4 @@ function clone(object: any, deep = false) {
 
     return result;
 }
-export { clone };
+export default clone;

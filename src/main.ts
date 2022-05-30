@@ -24,20 +24,20 @@ const mapToken = '39d358c825ec7e59142958656c0a6864'; // 盈嘉企业开发者秘
 // '5f5ced578c88ac399b0691415c56a9d7',
 // 'a1da75892570d7add77b51f40a1d72c4'
 
-// scene.imageryLayers.addImageryProvider(
-//     new WebMapTileServiceImageryProvider({
-//         // 影像底图
-//         url: 'https://{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&tk=' + mapToken,
-//         subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
-//         // url: 'https://{s}.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{TileMatrix}/{TileCol}/{TileRow}/512/png8?apikey=J0IJdYzKDYS3nHVDDEWETIqK3nAcxqW42vz7xeSq61M',
-//         // subdomains: ['1', '2', '3', '4'],
-//         maximumLevel: 17, // 定义最大缩放级别
-//         layer: 'tdtImgLayer',
-//         style: 'default',
-//         format: 'image/jpeg',
-//         tileMatrixSetID: 'GoogleMapsCompatible', // 使用谷歌的瓦片切片方式
-//     })
-// );
+scene.imageryLayers.addImageryProvider(
+    new WebMapTileServiceImageryProvider({
+        // 影像底图
+        url: 'https://{s}.tianditu.gov.cn/img_w/wmts?SERVICE=WMTS&REQUEST=GetTile&version=1.0.0&LAYER=img&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}&style=default&tk=' + mapToken,
+        subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'],
+        // url: 'https://{s}.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/{TileMatrix}/{TileCol}/{TileRow}/512/png8?apikey=J0IJdYzKDYS3nHVDDEWETIqK3nAcxqW42vz7xeSq61M',
+        // subdomains: ['1', '2', '3', '4'],
+        maximumLevel: 17, // 定义最大缩放级别
+        layer: 'tdtImgLayer',
+        style: 'default',
+        format: 'image/jpeg',
+        tileMatrixSetID: 'GoogleMapsCompatible', // 使用谷歌的瓦片切片方式
+    })
+);
 
 scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
 // scene.globe.visible = false;
@@ -72,6 +72,7 @@ const params = {
     setView: true,
     moveUp: true,
     moveRight: true,
+    wiriframe: false,
 };
 
 gui.add(params, 'setView').onChange(() => {
@@ -100,10 +101,10 @@ gui.add(params, 'moveUp').onChange(() => {
     // });
 
     camera.setView({
-        destination: new Cartesian3(-19941912.602255788, -11004359.207125463, 46376365.53857827),
+        destination: new Cartesian3(12957714.524789115, 3484578.2582445266, 8731.080157084989),
         orientation: {
-            direction: new Cartesian3(-0.0020551576304037884, 0.0771328503541443, -0.9970187058041386),
-            up: new Cartesian3(-0.026555531058682472, 0.9966649906029339, 0.0771602247057714),
+            direction: new Cartesian3(0.007893114053294072, 0.4873697273695402, -0.87316003549995469),
+            up: new Cartesian3(0.014139261626368416, 0.8730455479956032, 0.48743363897634123),
         },
     });
     console.log(camera);
@@ -112,6 +113,10 @@ gui.add(params, 'moveUp').onChange(() => {
 gui.add(params, 'moveRight').onChange(() => {
     // camera.position.set(0, 0, 55972529.261725195);
     console.log(camera);
+});
+
+gui.add(params, 'wiriframe').onChange((value: boolean) => {
+    scene.globe.wiriframe = value;
 });
 
 // camera.changed.addEventListener(() => {

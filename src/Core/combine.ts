@@ -69,4 +69,4 @@ function combine(object1?: any, object2?: any, deep?: boolean): { [propName: str
     }
     return result;
 }
-export { combine };
+export default combine;

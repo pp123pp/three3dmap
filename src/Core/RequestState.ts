@@ -53,4 +53,4 @@ enum RequestState {
     FAILED = 5,
 }
 
-export { RequestState };
+export default RequestState;
