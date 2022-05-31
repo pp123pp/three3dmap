@@ -4,16 +4,24 @@ import { AxesHelper } from 'three';
 import Cartesian2 from './Core/Cartesian2';
 import Cartesian3 from './Core/Cartesian3';
 import CesiumMatrix4 from './Core/CesiumMatrix4';
+import CesiumTerrainProvider from './Core/CesiumTerrainProvider';
+import defaultValue from './Core/defaultValue';
+import IonResource from './Core/IonResource';
 import { SceneMode } from './Core/SceneMode';
 import TileCoordinatesImageryProvider from './Scene/TileCoordinatesImageryProvider';
 import WebMapTileServiceImageryProvider from './Scene/WebMapTileServiceImageryProvider';
 import './Widgets/CesiumWidget.css';
-import Widgets from './Widgets/Widgets';
+import Viewer from './Widgets/Viewer/Viewer';
 
 const gui = new GUI();
 
-const widget = new Widgets('app', {
-    sceneMode: SceneMode.COLUMBUS_VIEW,
+const widget = new Viewer('app', {
+    // sceneMode: SceneMode.COLUMBUS_VIEW,
+    terrainProvider: new CesiumTerrainProvider({
+        url: IonResource.fromAssetId(1),
+        requestVertexNormals: false,
+        requestWaterMask: false,
+    }),
 });
 
 const { scene, camera } = widget;

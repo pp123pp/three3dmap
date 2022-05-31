@@ -22,6 +22,7 @@ import FrameState from './FrameState';
 import { Imagery } from './Imagery';
 import ImagerySplitDirection from './ImagerySplitDirection';
 import { ImageryState } from './ImageryState';
+import { Type_TerrainProvider } from './MapScene';
 import TileImagery from './TileImagery';
 import WebMapTileServiceImageryProvider from './WebMapTileServiceImageryProvider';
 
@@ -480,7 +481,7 @@ class ImageryLayer {
      * @param {Number} insertionPoint The position to insert new skeletons before in the tile's imagery list.
      * @returns {Boolean} true if this layer overlaps any portion of the terrain tile; otherwise, false.
      */
-    _createTileImagerySkeletons(tile: any, terrainProvider: EllipsoidTerrainProvider, insertionPoint?: number): boolean {
+    _createTileImagerySkeletons(tile: any, terrainProvider: Type_TerrainProvider, insertionPoint?: number): boolean {
         const surfaceTile = tile.data;
 
         if (defined(this._minimumTerrainLevel) && tile.level < (this._minimumTerrainLevel as number)) {

@@ -1,4 +1,5 @@
 import CesiumMath from './CesiumMath';
+import defined from './defined';
 import DeveloperError from './DeveloperError';
 import WebGLConstants from './WebGLConstants';
 
@@ -95,6 +96,37 @@ const IndexDatatype = {
                 throw new DeveloperError('Size in bytes cannot be mapped to an IndexDatatype');
             //>>includeEnd('debug');
         }
+    },
+
+    /**
+     * Creates a typed array from a source array buffer.  The resulting typed array will store indices, using either <code><Uint16Array</code>
+     * or <code>Uint32Array</code> depending on the number of vertices.
+     *
+     * @param {Number} numberOfVertices Number of vertices that the indices will reference.
+     * @param {ArrayBuffer} sourceArray Passed through to the typed array constructor.
+     * @param {Number} byteOffset Passed through to the typed array constructor.
+     * @param {Number} length Passed through to the typed array constructor.
+     * @returns {Uint16Array|Uint32Array} A <code>Uint16Array</code> or <code>Uint32Array</code> constructed with <code>sourceArray</code>, <code>byteOffset</code>, and <code>length</code>.
+     *
+     */
+    createTypedArrayFromArrayBuffer(numberOfVertices: number, sourceArray: any, byteOffset: number, length: number): Uint16Array | Uint32Array {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(numberOfVertices)) {
+            throw new DeveloperError('numberOfVertices is required.');
+        }
+        if (!defined(sourceArray)) {
+            throw new DeveloperError('sourceArray is required.');
+        }
+        if (!defined(byteOffset)) {
+            throw new DeveloperError('byteOffset is required.');
+        }
+        //>>includeEnd('debug');
+
+        if (numberOfVertices >= CesiumMath.SIXTY_FOUR_KILOBYTES) {
+            return new Uint32Array(sourceArray, byteOffset, length);
+        }
+
+        return new Uint16Array(sourceArray, byteOffset, length);
     },
 };
 export default IndexDatatype;

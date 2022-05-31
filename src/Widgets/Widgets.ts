@@ -55,6 +55,17 @@ function startRenderLoop(widget: Widgets) {
     requestAnimationFrame(render);
 }
 
+export interface IWidgets {
+    renderState?: WebGLRendererParameters;
+    requestRenderMode?: false;
+    enabledEffect?: false;
+    useBrowserRecommendedResolution?: true;
+    useDefaultRenderLoop?: true;
+    targetFrameRate?: number;
+    sceneMode?: SceneMode;
+    // globe?: Globe;
+}
+
 export default class Widgets {
     readonly scene: MapScene;
     readonly canvas: HTMLCanvasElement;
@@ -74,19 +85,7 @@ export default class Widgets {
     _useDefaultRenderLoop = false;
     _renderLoopRunning = false;
 
-    constructor(
-        container: Element | string,
-        options: {
-            renderState?: WebGLRendererParameters;
-            requestRenderMode?: false;
-            enabledEffect?: false;
-            useBrowserRecommendedResolution?: true;
-            useDefaultRenderLoop?: true;
-            targetFrameRate?: number;
-            sceneMode?: SceneMode;
-            // globe?: Globe;
-        }
-    ) {
+    constructor(container: Element | string, options: IWidgets) {
         container = getElement(container);
 
         const element = document.createElement('div');

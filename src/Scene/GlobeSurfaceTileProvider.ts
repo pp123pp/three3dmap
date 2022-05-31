@@ -34,6 +34,7 @@ import { Imagery } from './Imagery';
 import { ImageryLayer } from './ImageryLayer';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { ImageryState } from './ImageryState';
+import { Type_TerrainProvider } from './MapScene';
 import { QuadtreeOccluders } from './QuadtreeOccluders';
 import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
@@ -848,7 +849,7 @@ const clipRectangleAntimeridian = (tileRectangle: Rectangle, cartographicLimitRe
 export default class GlobeSurfaceTileProvider {
     _quadtree: any;
     _imageryLayers: ImageryLayerCollection;
-    _terrainProvider: EllipsoidTerrainProvider;
+    _terrainProvider: Type_TerrainProvider;
 
     readonly errorEvent = new Emit();
     readonly imageryLayersUpdatedEvent = new Emit();
@@ -928,7 +929,7 @@ export default class GlobeSurfaceTileProvider {
     }
 
     get ready(): boolean {
-        return this._imageryLayers.length === 0 || this._imageryLayers.get(0).imageryProvider.ready;
+        return this._terrainProvider.ready && (this._imageryLayers.length === 0 || this._imageryLayers.get(0).imageryProvider.ready);
     }
 
     /**
@@ -937,11 +938,11 @@ export default class GlobeSurfaceTileProvider {
      * @type {TerrainProvider}
      */
 
-    get terrainProvider(): EllipsoidTerrainProvider {
+    get terrainProvider(): Type_TerrainProvider {
         return this._terrainProvider;
     }
 
-    set terrainProvider(terrainProvider) {
+    set terrainProvider(terrainProvider: Type_TerrainProvider) {
         if (this._terrainProvider === terrainProvider) {
             return;
         }

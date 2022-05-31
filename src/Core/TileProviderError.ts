@@ -112,7 +112,7 @@ class TileProviderError {
      *          should be passed to this function the next time it is called for the same error in order
      *          to track retry counts.
      */
-    static handleError(previousError: TileProviderError, provider: any, event: Emit, message: string, x: number, y: number, level: number, retryFunction: any, errorDetails?: Error): TileProviderError {
+    static handleError(previousError: TileProviderError, provider: any, event: Emit, message: string, x: number | undefined, y: number | undefined, level: number | undefined, retryFunction: any, errorDetails?: Error): TileProviderError {
         let error = previousError;
         if (!defined(previousError)) {
             error = new TileProviderError(provider, message, x, y, level, 0, errorDetails);

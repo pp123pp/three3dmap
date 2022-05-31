@@ -15,7 +15,7 @@ import FrameState from './FrameState';
 import GlobeSurfaceTile from './GlobeSurfaceTile';
 import GlobeSurfaceTileProvider from './GlobeSurfaceTileProvider';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
-import MapScene from './MapScene';
+import MapScene, { Type_TerrainProvider } from './MapScene';
 import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
 
@@ -45,7 +45,7 @@ function createComparePickTileFunction(rayOrigin: Cartesian3) {
 
 class Globe extends Object3DCollection {
     _ellipsoid: Ellipsoid;
-    _terrainProvider: EllipsoidTerrainProvider;
+    _terrainProvider: Type_TerrainProvider;
 
     _terrainProviderChanged = new Emit();
 
@@ -147,11 +147,11 @@ class Globe extends Object3DCollection {
         this.terrainProvider = new EllipsoidTerrainProvider();
     }
 
-    get terrainProvider(): EllipsoidTerrainProvider {
+    get terrainProvider(): Type_TerrainProvider {
         return this._terrainProvider;
     }
 
-    set terrainProvider(value: EllipsoidTerrainProvider) {
+    set terrainProvider(value: Type_TerrainProvider) {
         if (value !== this._terrainProvider) {
             this._terrainProvider = value;
             this._terrainProviderChanged.raiseEvent(value);

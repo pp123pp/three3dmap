@@ -1,8 +1,17 @@
 import Rectangle from '../Core/Rectangle';
 import { TilingScheme } from '../Core/CesiumTerrainProvider';
 import binarySearch from '@/Core/binarySearch';
+import defined from '@/Core/defined';
+import Cartographic from '@/Core/Cartographic';
 
 const rectangleScratch = new Rectangle();
+
+const rectanglesScratch: Rectangle[] = [];
+const remainingToCoverByLevelScratch = [];
+const westScratch = new Rectangle();
+const eastScratch = new Rectangle();
+
+const cartographicScratch = new Cartographic();
 
 function findNode(level: number, x: number, y: number, nodes: any) {
     const count = nodes.length;
@@ -78,7 +87,7 @@ export default class TileAvailability {
      * @return {Number} The level of the most detailed tile covering the position.
      * @throws {DeveloperError} If position is outside any tile according to the tiling scheme.
      */
-    computeMaximumLevelAtPosition(position) {
+    computeMaximumLevelAtPosition(position: Cartographic): number {
         // Find the root node that contains this position.
         let node;
         for (let nodeIndex = 0; nodeIndex < this._rootNodes.length; ++nodeIndex) {
@@ -95,6 +104,57 @@ export default class TileAvailability {
 
         return findMaxLevelFromNode(undefined, node, position);
     }
+
+    /**
+     * Determines if a particular tile is available.
+     * @param {Number} level The tile level to check.
+     * @param {Number} x The X coordinate of the tile to check.
+     * @param {Number} y The Y coordinate of the tile to check.
+     * @return {Boolean} True if the tile is available; otherwise, false.
+     */
+    isTileAvailable(level: number, x: number, y: number): boolean {
+        // Get the center of the tile and find the maximum level at that position.
+        // Because availability is by tile, if the level is available at that point, it
+        // is sure to be available for the whole tile.  We assume that if a tile at level n exists,
+        // then all its parent tiles back to level 0 exist too.  This isn't really enforced
+        // anywhere, but Cesium would never load a tile for which this is not true.
+        const rectangle = this._tilingScheme.tileXYToRectangle(x, y, level, rectangleScratch);
+        Rectangle.center(rectangle, cartographicScratch);
+        return this.computeMaximumLevelAtPosition(cartographicScratch) >= level;
+    }
+
+    /**
+     * Computes a bit mask indicating which of a tile's four children exist.
+     * If a child's bit is set, a tile is available for that child.  If it is cleared,
+     * the tile is not available.  The bit values are as follows:
+     * <table>
+     *     <tr><th>Bit Position</th><th>Bit Value</th><th>Child Tile</th></tr>
+     *     <tr><td>0</td><td>1</td><td>Southwest</td></tr>
+     *     <tr><td>1</td><td>2</td><td>Southeast</td></tr>
+     *     <tr><td>2</td><td>4</td><td>Northwest</td></tr>
+     *     <tr><td>3</td><td>8</td><td>Northeast</td></tr>
+     * </table>
+     *
+     * @param {Number} level The level of the parent tile.
+     * @param {Number} x The X coordinate of the parent tile.
+     * @param {Number} y The Y coordinate of the parent tile.
+     * @return {Number} The bit mask indicating child availability.
+     */
+    computeChildMaskForTile(level: number, x: number, y: number): number {
+        const childLevel = level + 1;
+        if (childLevel >= this._maximumLevel) {
+            return 0;
+        }
+
+        let mask = 0;
+
+        mask |= this.isTileAvailable(childLevel, 2 * x, 2 * y + 1) ? 1 : 0;
+        mask |= this.isTileAvailable(childLevel, 2 * x + 1, 2 * y + 1) ? 2 : 0;
+        mask |= this.isTileAvailable(childLevel, 2 * x, 2 * y) ? 4 : 0;
+        mask |= this.isTileAvailable(childLevel, 2 * x + 1, 2 * y) ? 8 : 0;
+
+        return mask;
+    }
 }
 
 class QuadtreeNode {
@@ -104,7 +164,7 @@ class QuadtreeNode {
     x: number;
     y: number;
     extent: Rectangle;
-    rectangles: Rectangle[];
+    rectangles: RectangleWithLevel[];
     _sw?: QuadtreeNode;
     _se?: QuadtreeNode;
     _nw?: QuadtreeNode;
@@ -155,11 +215,11 @@ class QuadtreeNode {
 
 class RectangleWithLevel {
     level: number;
-    west: Rectangle;
-    south: Rectangle;
-    east: Rectangle;
-    north: Rectangle;
-    constructor(level: number, west: Rectangle, south: Rectangle, east: Rectangle, north: Rectangle) {
+    west: number;
+    south: number;
+    east: number;
+    north: number;
+    constructor(level: number, west: number, south: number, east: number, north: number) {
         this.level = level;
         this.west = west;
         this.south = south;
@@ -168,7 +228,7 @@ class RectangleWithLevel {
     }
 }
 
-function rectanglesOverlap(rectangle1: Rectangle, rectangle2: Rectangle) {
+function rectanglesOverlap(rectangle1: RectangleWithLevel, rectangle2: RectangleWithLevel) {
     const west = Math.max(rectangle1.west, rectangle2.west);
     const south = Math.max(rectangle1.south, rectangle2.south);
     const east = Math.min(rectangle1.east, rectangle2.east);
@@ -203,25 +263,25 @@ function putRectangleInQuadtree(maxDepth: number, node: QuadtreeNode, rectangle:
     }
 }
 
-function rectangleLevelComparator(a, b) {
+function rectangleLevelComparator(a: RectangleWithLevel, b: number) {
     return a.level - b;
 }
 
-function rectangleFullyContainsRectangle(potentialContainer, rectangleToTest) {
+function rectangleFullyContainsRectangle(potentialContainer: Rectangle, rectangleToTest: Rectangle) {
     return rectangleToTest.west >= potentialContainer.west && rectangleToTest.east <= potentialContainer.east && rectangleToTest.south >= potentialContainer.south && rectangleToTest.north <= potentialContainer.north;
 }
 
-function rectangleContainsPosition(potentialContainer, positionToTest) {
+function rectangleContainsPosition(potentialContainer: Rectangle | RectangleWithLevel, positionToTest: Cartographic) {
     return positionToTest.longitude >= potentialContainer.west && positionToTest.longitude <= potentialContainer.east && positionToTest.latitude >= potentialContainer.south && positionToTest.latitude <= potentialContainer.north;
 }
 
-function findMaxLevelFromNode(stopNode, node, position) {
+function findMaxLevelFromNode(stopNode: QuadtreeNode | undefined, node: QuadtreeNode, position: Cartographic) {
     let maxLevel = 0;
 
     // Find the deepest quadtree node containing this point.
     let found = false;
     while (!found) {
-        const nw = node._nw && rectangleContainsPosition(node._nw.extent, position);
+        const nw: any = node._nw && rectangleContainsPosition(node._nw.extent, position);
         const ne = node._ne && rectangleContainsPosition(node._ne.extent, position);
         const sw = node._sw && rectangleContainsPosition(node._sw.extent, position);
         const se = node._se && rectangleContainsPosition(node._se.extent, position);
@@ -231,26 +291,26 @@ function findMaxLevelFromNode(stopNode, node, position) {
         // in multiple tiles and we need to check all of them, so use recursion.
         if (nw + ne + sw + se > 1) {
             if (nw) {
-                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._nw, position));
+                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._nw as QuadtreeNode, position));
             }
             if (ne) {
-                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._ne, position));
+                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._ne as QuadtreeNode, position));
             }
             if (sw) {
-                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._sw, position));
+                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._sw as QuadtreeNode, position));
             }
             if (se) {
-                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._se, position));
+                maxLevel = Math.max(maxLevel, findMaxLevelFromNode(node, node._se as QuadtreeNode, position));
             }
             break;
         } else if (nw) {
-            node = node._nw;
+            node = node._nw as QuadtreeNode;
         } else if (ne) {
-            node = node._ne;
+            node = node._ne as QuadtreeNode;
         } else if (sw) {
-            node = node._sw;
+            node = node._sw as QuadtreeNode;
         } else if (se) {
-            node = node._se;
+            node = node._se as QuadtreeNode;
         } else {
             found = true;
         }
@@ -268,69 +328,8 @@ function findMaxLevelFromNode(stopNode, node, position) {
             }
         }
 
-        node = node.parent;
+        node = node.parent as QuadtreeNode;
     }
 
     return maxLevel;
-}
-
-function updateCoverageWithNode(remainingToCoverByLevel, node, rectanglesToCover) {
-    if (!node) {
-        return;
-    }
-
-    let i;
-    let anyOverlap = false;
-    for (i = 0; i < rectanglesToCover.length; ++i) {
-        anyOverlap = anyOverlap || rectanglesOverlap(node.extent, rectanglesToCover[i]);
-    }
-
-    if (!anyOverlap) {
-        // This node is not applicable to the rectangle(s).
-        return;
-    }
-
-    const rectangles = node.rectangles;
-    for (i = 0; i < rectangles.length; ++i) {
-        const rectangle = rectangles[i];
-
-        if (!remainingToCoverByLevel[rectangle.level]) {
-            remainingToCoverByLevel[rectangle.level] = rectanglesToCover;
-        }
-
-        remainingToCoverByLevel[rectangle.level] = subtractRectangle(remainingToCoverByLevel[rectangle.level], rectangle);
-    }
-
-    // Update with child nodes.
-    updateCoverageWithNode(remainingToCoverByLevel, node._nw, rectanglesToCover);
-    updateCoverageWithNode(remainingToCoverByLevel, node._ne, rectanglesToCover);
-    updateCoverageWithNode(remainingToCoverByLevel, node._sw, rectanglesToCover);
-    updateCoverageWithNode(remainingToCoverByLevel, node._se, rectanglesToCover);
-}
-
-function subtractRectangle(rectangleList, rectangleToSubtract) {
-    const result = [];
-    for (let i = 0; i < rectangleList.length; ++i) {
-        const rectangle = rectangleList[i];
-        if (!rectanglesOverlap(rectangle, rectangleToSubtract)) {
-            // Disjoint rectangles.  Original rectangle is unmodified.
-            result.push(rectangle);
-        } else {
-            // rectangleToSubtract partially or completely overlaps rectangle.
-            if (rectangle.west < rectangleToSubtract.west) {
-                result.push(new Rectangle(rectangle.west, rectangle.south, rectangleToSubtract.west, rectangle.north));
-            }
-            if (rectangle.east > rectangleToSubtract.east) {
-                result.push(new Rectangle(rectangleToSubtract.east, rectangle.south, rectangle.east, rectangle.north));
-            }
-            if (rectangle.south < rectangleToSubtract.south) {
-                result.push(new Rectangle(Math.max(rectangleToSubtract.west, rectangle.west), rectangle.south, Math.min(rectangleToSubtract.east, rectangle.east), rectangleToSubtract.south));
-            }
-            if (rectangle.north > rectangleToSubtract.north) {
-                result.push(new Rectangle(Math.max(rectangleToSubtract.west, rectangle.west), rectangleToSubtract.north, Math.min(rectangleToSubtract.east, rectangle.east), rectangle.north));
-            }
-        }
-    }
-
-    return result;
 }

@@ -28,6 +28,7 @@ import FrameState from './FrameState';
 import { Imagery } from './Imagery';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import { ImageryState } from './ImageryState';
+import { Type_TerrainProvider } from './MapScene';
 import QuadtreePrimitive from './QuadtreePrimitive';
 import QuadtreeTile from './QuadtreeTile';
 import TerrainState from './TerrainState';
@@ -182,7 +183,7 @@ function createResources(surfaceTile: GlobeSurfaceTile, context: Context, terrai
     surfaceTile.fill = surfaceTile.fill && surfaceTile.fill.destroy(vertexArraysToDestroy);
 }
 
-function prepareNewTile(tile: QuadtreeTile, terrainProvider: EllipsoidTerrainProvider, imageryLayerCollection: ImageryLayerCollection) {
+function prepareNewTile(tile: QuadtreeTile, terrainProvider: Type_TerrainProvider, imageryLayerCollection: ImageryLayerCollection) {
     let available = terrainProvider.getTileDataAvailable(tile.x, tile.y, tile.level);
 
     if (!defined(available) && defined(tile.parent)) {
@@ -330,7 +331,7 @@ export default class GlobeSurfaceTile {
         // this.wireframeVertexArray = undefined;
     }
 
-    static initialize(tile: QuadtreeTile, terrainProvider: EllipsoidTerrainProvider, imageryLayerCollection: ImageryLayerCollection): void {
+    static initialize(tile: QuadtreeTile, terrainProvider: Type_TerrainProvider, imageryLayerCollection: ImageryLayerCollection): void {
         let surfaceTile = tile.data;
         if (!defined(surfaceTile)) {
             surfaceTile = tile.data = new GlobeSurfaceTile();
@@ -376,7 +377,7 @@ export default class GlobeSurfaceTile {
         });
     }
 
-    static processStateMachine(tile: QuadtreeTile, frameState: FrameState, terrainProvider: EllipsoidTerrainProvider, imageryLayerCollection: ImageryLayerCollection, quadtree: QuadtreePrimitive, vertexArraysToDestroy: any[], terrainOnly: boolean): void {
+    static processStateMachine(tile: QuadtreeTile, frameState: FrameState, terrainProvider: Type_TerrainProvider, imageryLayerCollection: ImageryLayerCollection, quadtree: QuadtreePrimitive, vertexArraysToDestroy: any[], terrainOnly: boolean): void {
         GlobeSurfaceTile.initialize(tile, terrainProvider, imageryLayerCollection);
 
         const surfaceTile = tile.data as GlobeSurfaceTile;
@@ -432,7 +433,7 @@ export default class GlobeSurfaceTile {
         }
     }
 
-    processImagery(tile: QuadtreeTile, terrainProvider: EllipsoidTerrainProvider, frameState: FrameState, skipLoading?: any): boolean {
+    processImagery(tile: QuadtreeTile, terrainProvider: Type_TerrainProvider, frameState: FrameState, skipLoading?: any): boolean {
         const surfaceTile = tile.data as GlobeSurfaceTile;
         let isUpsampledOnly = tile.upsampledFromParent;
         let isAnyTileLoaded = false;
@@ -691,6 +692,16 @@ export default class GlobeSurfaceTile {
 
             // vertexArray.dispose();
         }
+    }
+
+    _findAncestorTileWithTerrainData(tile: any): any {
+        let sourceTile = tile.parent;
+
+        while (defined(sourceTile) && (!defined(sourceTile.data) || !defined(sourceTile.data.terrainData) || sourceTile.data.terrainData.wasCreatedByUpsampling())) {
+            sourceTile = sourceTile.parent;
+        }
+
+        return sourceTile;
     }
 }
 

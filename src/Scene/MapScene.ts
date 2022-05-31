@@ -1,8 +1,10 @@
 import CesiumColor from '@/Core/CesiumColor';
 import { incrementWrap } from '@/Core/CesiumMath';
+import CesiumTerrainProvider from '@/Core/CesiumTerrainProvider';
 import defaultValue from '@/Core/defaultValue';
 import defined from '@/Core/defined';
 import Ellipsoid from '@/Core/Ellipsoid';
+import EllipsoidTerrainProvider from '@/Core/EllipsoidTerrainProvider';
 import Emit from '@/Core/Emit';
 import GeographicProjection from '@/Core/GeographicProjection';
 import { PrimitiveCollection } from '@/Core/PrimitiveCollection';
@@ -20,6 +22,8 @@ import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import MapCamera from './MapCamera';
 import ScreenSpaceCameraController from './ScreenSpaceCameraController';
+
+export type Type_TerrainProvider = EllipsoidTerrainProvider | CesiumTerrainProvider;
 
 interface SceneOptions {
     renderState?: WebGLRendererParameters;
@@ -293,6 +297,24 @@ export default class MapScene extends Scene {
 
     set mode(value: SceneMode) {
         this._mode = value;
+    }
+
+    get terrainProvider(): Type_TerrainProvider | undefined {
+        if (!defined(this.globe)) {
+            return undefined;
+        }
+
+        return this.globe.terrainProvider;
+    }
+
+    set terrainProvider(terrainProvider: Type_TerrainProvider | undefined) {
+        if (defined(this.globe)) {
+            this.globe.terrainProvider = terrainProvider as Type_TerrainProvider;
+        }
+    }
+
+    get terrainProviderChanged(): Emit {
+        return this.globe.terrainProviderChanged;
     }
 
     initializeFrame(): void {
