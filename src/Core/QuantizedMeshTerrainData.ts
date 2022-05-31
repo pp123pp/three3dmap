@@ -1,7 +1,9 @@
 import Cartesian3 from './Cartesian3';
+import { TilingScheme } from './CesiumTerrainProvider';
 import createVerticesFromQuantizedTerrainMesh from './createVerticesFromQuantizedTerrainMesh';
 import defaultValue from './defaultValue';
 import defined from './defined';
+import DeveloperError from './DeveloperError';
 import IndexDatatype from './IndexDatatype';
 import TerrainEncoding from './TerrainEncoding';
 import TerrainMesh from './TerrainMesh';
@@ -225,6 +227,136 @@ export default class QuantizedMeshTerrainData {
      */
     wasCreatedByUpsampling(): boolean {
         return this._createdByUpsampling;
+    }
+
+    /**
+     * Upsamples this terrain data for use by a descendant tile.  The resulting instance will contain a subset of the
+     * vertices in this instance, interpolated if necessary.
+     *
+     * @param {TilingScheme} tilingScheme The tiling scheme of this terrain data.
+     * @param {Number} thisX The X coordinate of this tile in the tiling scheme.
+     * @param {Number} thisY The Y coordinate of this tile in the tiling scheme.
+     * @param {Number} thisLevel The level of this tile in the tiling scheme.
+     * @param {Number} descendantX The X coordinate within the tiling scheme of the descendant tile for which we are upsampling.
+     * @param {Number} descendantY The Y coordinate within the tiling scheme of the descendant tile for which we are upsampling.
+     * @param {Number} descendantLevel The level within the tiling scheme of the descendant tile for which we are upsampling.
+     * @returns {Promise.<QuantizedMeshTerrainData>|undefined} A promise for upsampled heightmap terrain data for the descendant tile,
+     *          or undefined if too many asynchronous upsample operations are in progress and the request has been
+     *          deferred.
+     */
+    upsample(tilingScheme: TilingScheme, thisX: number, thisY: number, thisLevel: number, descendantX: number, descendantY: number, descendantLevel: number): any {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(tilingScheme)) {
+            throw new DeveloperError('tilingScheme is required.');
+        }
+        if (!defined(thisX)) {
+            throw new DeveloperError('thisX is required.');
+        }
+        if (!defined(thisY)) {
+            throw new DeveloperError('thisY is required.');
+        }
+        if (!defined(thisLevel)) {
+            throw new DeveloperError('thisLevel is required.');
+        }
+        if (!defined(descendantX)) {
+            throw new DeveloperError('descendantX is required.');
+        }
+        if (!defined(descendantY)) {
+            throw new DeveloperError('descendantY is required.');
+        }
+        if (!defined(descendantLevel)) {
+            throw new DeveloperError('descendantLevel is required.');
+        }
+        const levelDifference = descendantLevel - thisLevel;
+        if (levelDifference > 1) {
+            throw new DeveloperError('Upsampling through more than one level at a time is not currently supported.');
+        }
+        //>>includeEnd('debug');
+
+        const mesh = this._mesh;
+        if (!defined(this._mesh)) {
+            return undefined;
+        }
+
+        const isEastChild = thisX * 2 !== descendantX;
+        const isNorthChild = thisY * 2 === descendantY;
+
+        const ellipsoid = tilingScheme.ellipsoid;
+        const childRectangle = tilingScheme.tileXYToRectangle(descendantX, descendantY, descendantLevel);
+
+        // let upsamplePromise = upsampleTaskProcessor.scheduleTask({
+        //     vertices: mesh.vertices,
+        //     vertexCountWithoutSkirts: mesh.vertexCountWithoutSkirts,
+        //     indices: mesh.indices,
+        //     indexCountWithoutSkirts: mesh.indexCountWithoutSkirts,
+        //     encoding: mesh.encoding,
+        //     minimumHeight: this._minimumHeight,
+        //     maximumHeight: this._maximumHeight,
+        //     isEastChild: isEastChild,
+        //     isNorthChild: isNorthChild,
+        //     childRectangle: childRectangle,
+        //     ellipsoid: ellipsoid,
+        // });
+
+        const upsamplePromise = upsampleQuantizedTerrainMesh({
+            vertices: mesh.vertices,
+            vertexCountWithoutSkirts: mesh.vertexCountWithoutSkirts,
+            indices: mesh.indices,
+            indexCountWithoutSkirts: mesh.indexCountWithoutSkirts,
+            encoding: mesh.encoding,
+            minimumHeight: this._minimumHeight,
+            maximumHeight: this._maximumHeight,
+            isEastChild: isEastChild,
+            isNorthChild: isNorthChild,
+            childRectangle: childRectangle,
+            ellipsoid: ellipsoid,
+        });
+
+        if (!defined(upsamplePromise)) {
+            // Postponed
+            return undefined;
+        }
+
+        let shortestSkirt = Math.min(this._westSkirtHeight, this._eastSkirtHeight);
+        shortestSkirt = Math.min(shortestSkirt, this._southSkirtHeight);
+        shortestSkirt = Math.min(shortestSkirt, this._northSkirtHeight);
+
+        const westSkirtHeight = isEastChild ? shortestSkirt * 0.5 : this._westSkirtHeight;
+        const southSkirtHeight = isNorthChild ? shortestSkirt * 0.5 : this._southSkirtHeight;
+        const eastSkirtHeight = isEastChild ? this._eastSkirtHeight : shortestSkirt * 0.5;
+        const northSkirtHeight = isNorthChild ? this._northSkirtHeight : shortestSkirt * 0.5;
+        const credits = this._credits;
+
+        return Promise.resolve(upsamplePromise).then(function (result) {
+            const quantizedVertices = new Uint16Array(result.vertices);
+            const indicesTypedArray = IndexDatatype.createTypedArray(quantizedVertices.length / 3, result.indices);
+            let encodedNormals;
+            if (defined(result.encodedNormals)) {
+                encodedNormals = new Uint8Array(result.encodedNormals);
+            }
+
+            return new QuantizedMeshTerrainData({
+                quantizedVertices: quantizedVertices,
+                indices: indicesTypedArray,
+                encodedNormals: encodedNormals,
+                minimumHeight: result.minimumHeight,
+                maximumHeight: result.maximumHeight,
+                boundingSphere: BoundingSphere.clone(result.boundingSphere),
+                orientedBoundingBox: OrientedBoundingBox.clone(result.orientedBoundingBox),
+                horizonOcclusionPoint: Cartesian3.clone(result.horizonOcclusionPoint),
+                westIndices: result.westIndices,
+                southIndices: result.southIndices,
+                eastIndices: result.eastIndices,
+                northIndices: result.northIndices,
+                westSkirtHeight: westSkirtHeight,
+                southSkirtHeight: southSkirtHeight,
+                eastSkirtHeight: eastSkirtHeight,
+                northSkirtHeight: northSkirtHeight,
+                childTileMask: 0,
+                credits: credits,
+                createdByUpsampling: true,
+            });
+        });
     }
 }
 

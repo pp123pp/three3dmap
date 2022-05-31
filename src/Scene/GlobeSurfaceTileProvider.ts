@@ -1641,7 +1641,7 @@ function updateTileBoundingRegion(tile: QuadtreeTile, tileProvider: GlobeSurface
                     tileBoundingRegion.minimumHeight = ancestorMesh.minimumHeight;
                     tileBoundingRegion.maximumHeight = ancestorMesh.maximumHeight;
                     break;
-                } else if (ancestorTerrainData !== undefined && ancestorTerrainData._minimumHeight !== undefined && ancestorTerrainData._maximumHeight !== undefined) {
+                } else if (defined(ancestorTerrainData) && ancestorTerrainData._minimumHeight !== undefined && ancestorTerrainData._maximumHeight !== undefined) {
                     tileBoundingRegion.minimumHeight = ancestorTerrainData._minimumHeight;
                     tileBoundingRegion.maximumHeight = ancestorTerrainData._maximumHeight;
                     break;

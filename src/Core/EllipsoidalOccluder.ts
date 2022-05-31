@@ -1,4 +1,5 @@
 import Cartesian3 from './Cartesian3';
+import defaultValue from './defaultValue';
 import defined from './defined';
 import Ellipsoid from './Ellipsoid';
 
@@ -162,6 +163,30 @@ export default class EllipsoidalOccluder {
 
         return isScaledSpacePointVisible(occludeeScaledSpacePosition, cv, vhMagnitudeSquared);
     }
+
+    /**
+     * Similar to {@link EllipsoidalOccluder#computeHorizonCullingPointFromVertices} except computes the culling
+     * point relative to an ellipsoid that has been shrunk by the minimum height when the minimum height is below
+     * the ellipsoid. The returned point is expressed in the possibly-shrunk ellipsoid-scaled space and is suitable
+     * for use with {@link EllipsoidalOccluder#isScaledSpacePointVisiblePossiblyUnderEllipsoid}.
+     *
+     * @param {Cartesian3} directionToPoint The direction that the computed point will lie along.
+     *                     A reasonable direction to use is the direction from the center of the ellipsoid to
+     *                     the center of the bounding sphere computed from the positions.  The direction need not
+     *                     be normalized.
+     * @param {Number[]} vertices  The vertices from which to compute the horizon culling point.  The positions
+     *                   must be expressed in a reference frame centered at the ellipsoid and aligned with the
+     *                   ellipsoid's axes.
+     * @param {Number} [stride=3]
+     * @param {Cartesian3} [center=Cartesian3.ZERO]
+     * @param {Number} [minimumHeight] The minimum height of all vertices. If this value is undefined, all vertices are assumed to be above the ellipsoid.
+     * @param {Cartesian3} [result] The instance on which to store the result instead of allocating a new instance.
+     * @returns {Cartesian3} The computed horizon culling point, expressed in the possibly-shrunk ellipsoid-scaled space.
+     */
+    computeHorizonCullingPointFromVerticesPossiblyUnderEllipsoid(directionToPoint: Cartesian3, vertices: number[], stride = 3, center = Cartesian3.ZERO, minimumHeight?: number, result = new Cartesian3()): Cartesian3 {
+        const possiblyShrunkEllipsoid = getPossiblyShrunkEllipsoid(this._ellipsoid, minimumHeight, scratchEllipsoidShrunk);
+        return computeHorizonCullingPointFromVertices(possiblyShrunkEllipsoid, directionToPoint, vertices, stride, center, result);
+    }
 }
 
 const scratchEllipsoidShrunkRadii = new Cartesian3();
@@ -202,4 +227,32 @@ function isScaledSpacePointVisible(occludeeScaledSpacePosition: Cartesian3, came
     // in this case, set the culling plane to be on V.
     const isOccluded = vhMagnitudeSquared < 0 ? vtDotVc > 0 : vtDotVc > vhMagnitudeSquared && (vtDotVc * vtDotVc) / Cartesian3.magnitudeSquared(vt) > vhMagnitudeSquared;
     return !isOccluded;
+}
+
+const positionScratch = new Cartesian3();
+
+function computeHorizonCullingPointFromVertices(ellipsoid: Ellipsoid, directionToPoint: Cartesian3, vertices: number[], stride = 3, center = Cartesian3.ZERO, result = new Cartesian3()): Cartesian3 {
+    if (!defined(result)) {
+        result = new Cartesian3();
+    }
+
+    stride = defaultValue(stride, 3);
+    center = defaultValue(center, Cartesian3.ZERO);
+    const scaledSpaceDirectionToPoint = computeScaledSpaceDirectionToPoint(ellipsoid, directionToPoint);
+    let resultMagnitude = 0.0;
+
+    for (let i = 0, len = vertices.length; i < len; i += stride) {
+        positionScratch.x = vertices[i] + center.x;
+        positionScratch.y = vertices[i + 1] + center.y;
+        positionScratch.z = vertices[i + 2] + center.z;
+
+        const candidateMagnitude = computeMagnitude(ellipsoid, positionScratch, scaledSpaceDirectionToPoint);
+        if (candidateMagnitude < 0.0) {
+            // all points should face the same direction, but this one doesn't, so return undefined
+            return undefined as any;
+        }
+        resultMagnitude = Math.max(resultMagnitude, candidateMagnitude);
+    }
+
+    return magnitudeToPoint(scaledSpaceDirectionToPoint, resultMagnitude, result) as Cartesian3;
 }
