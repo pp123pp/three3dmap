@@ -1,6 +1,6 @@
+import { TilingScheme, typeIntArray } from '@/Type';
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
-import { TilingScheme } from './CesiumTerrainProvider';
 import createVerticesFromQuantizedTerrainMesh from './createVerticesFromQuantizedTerrainMesh';
 import defaultValue from './defaultValue';
 import defined from './defined';
@@ -12,7 +12,7 @@ import TerrainMesh from './TerrainMesh';
 import upsampleQuantizedTerrainMesh from './upsampleQuantizedTerrainMesh';
 
 export default class QuantizedMeshTerrainData {
-    _quantizedVertices: any;
+    _quantizedVertices: typeIntArray;
     _encodedNormals: any;
     _indices: any;
     _minimumHeight: any;
@@ -25,18 +25,18 @@ export default class QuantizedMeshTerrainData {
     _vValues: any;
     _heightValues: any;
 
-    _westIndices: any;
-    _southIndices: any;
-    _eastIndices: any;
-    _northIndices: any;
+    _westIndices: Uint16Array;
+    _southIndices: Uint16Array;
+    _eastIndices: Uint16Array;
+    _northIndices: Uint16Array;
 
-    _westSkirtHeight: any;
-    _southSkirtHeight: any;
-    _eastSkirtHeight: any;
-    _northSkirtHeight: any;
+    _westSkirtHeight: number;
+    _southSkirtHeight: number;
+    _eastSkirtHeight: number;
+    _northSkirtHeight: number;
 
-    _childTileMask: any;
-    _createdByUpsampling: any;
+    _childTileMask: number;
+    _createdByUpsampling: boolean;
     _waterMask: any;
     _mesh: any;
     constructor(options: any) {
@@ -56,11 +56,11 @@ export default class QuantizedMeshTerrainData {
         this._heightValues = this._quantizedVertices.subarray(2 * vertexCount, 3 * vertexCount);
 
         // We don't assume that we can count on the edge vertices being sorted by u or v.
-        function sortByV(a: any, b: any) {
+        function sortByV(a: number, b: number) {
             return vValues[a] - vValues[b];
         }
 
-        function sortByU(a: any, b: any) {
+        function sortByU(a: number, b: number) {
             return uValues[a] - uValues[b];
         }
 
@@ -115,7 +115,7 @@ export default class QuantizedMeshTerrainData {
      *          asynchronous mesh creations are already in progress and the operation should
      *          be retried later.
      */
-    createMesh(options: any) {
+    createMesh(options: { tilingScheme: TilingScheme; x: number; y: number; level: number; exaggeration?: number; exaggerationRelativeHeight?: number; throttle?: boolean }): Promise<TerrainMesh> | undefined {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
         const tilingScheme = options.tilingScheme;
@@ -200,10 +200,10 @@ export default class QuantizedMeshTerrainData {
 
             // Clone complex result objects because the transfer from the web worker
             // has stripped them down to JSON-style objects.
-            that._mesh = new TerrainMesh(rtc, vertices, indicesTypedArray as any, result.indexCountWithoutSkirts, vertexCountWithoutSkirts, minimumHeight, maximumHeight, boundingSphere, occludeePointInScaledSpace, stride, obb, terrainEncoding, result.westIndicesSouthToNorth, result.southIndicesEastToWest, result.eastIndicesNorthToSouth, result.northIndicesWestToEast);
+            that._mesh = new TerrainMesh(rtc, vertices, indicesTypedArray, result.indexCountWithoutSkirts, vertexCountWithoutSkirts, minimumHeight, maximumHeight, boundingSphere, occludeePointInScaledSpace, stride, obb, terrainEncoding, result.westIndicesSouthToNorth, result.southIndicesEastToWest, result.eastIndicesNorthToSouth, result.northIndicesWestToEast);
 
             // Free memory received from server after mesh is created.
-            that._quantizedVertices = undefined;
+            that._quantizedVertices = undefined as any;
             that._encodedNormals = undefined;
             that._indices = undefined;
 
@@ -211,10 +211,10 @@ export default class QuantizedMeshTerrainData {
             that._vValues = undefined;
             that._heightValues = undefined;
 
-            that._westIndices = undefined;
-            that._southIndices = undefined;
-            that._eastIndices = undefined;
-            that._northIndices = undefined;
+            that._westIndices = undefined as any;
+            that._southIndices = undefined as any;
+            that._eastIndices = undefined as any;
+            that._northIndices = undefined as any;
 
             return that._mesh;
         });

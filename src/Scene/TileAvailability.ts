@@ -1,15 +1,10 @@
 import Rectangle from '../Core/Rectangle';
-import { TilingScheme } from '../Core/CesiumTerrainProvider';
+import { TilingScheme } from './../Type';
 import binarySearch from '@/Core/binarySearch';
 import defined from '@/Core/defined';
 import Cartographic from '@/Core/Cartographic';
 
 const rectangleScratch = new Rectangle();
-
-const rectanglesScratch: Rectangle[] = [];
-const remainingToCoverByLevelScratch = [];
-const westScratch = new Rectangle();
-const eastScratch = new Rectangle();
 
 const cartographicScratch = new Cartographic();
 

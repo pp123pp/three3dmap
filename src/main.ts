@@ -16,11 +16,11 @@ import Viewer from './Widgets/Viewer/Viewer';
 const gui = new GUI();
 
 const widget = new Viewer('app', {
-    terrainProvider: new CesiumTerrainProvider({
-        url: IonResource.fromAssetId(1),
-        requestVertexNormals: false,
-        requestWaterMask: false,
-    }),
+    // terrainProvider: new CesiumTerrainProvider({
+    //     url: IonResource.fromAssetId(1),
+    //     requestVertexNormals: false,
+    //     requestWaterMask: false,
+    // }),
 });
 
 const { scene, camera } = widget;
@@ -46,8 +46,23 @@ scene.imageryLayers.addImageryProvider(
     })
 );
 
-scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
+// scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
 // scene.globe.visible = false;
+
+//创建影像服务对象
+scene.imageryLayers.addImageryProvider(
+    new WebMapTileServiceImageryProvider({
+        //调用影响中文注记服务
+        url: 'http://{s}.tianditu.gov.cn/cva_w/wmts?service=wmts&request=GetTile&version=1.0.0' + '&LAYER=cva&tileMatrixSet=w&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' + '&style=default.jpg&tk=' + mapToken,
+        layer: 'cia_w',
+        style: 'default',
+        format: 'tiles',
+        tileMatrixSetID: 'GoogleMapsCompatible',
+        subdomains: ['t0', 't1', 't2', 't3', 't4', 't5', 't6', 't7'], //天地图8个服务器
+        minimumLevel: 0,
+        maximumLevel: 18,
+    })
+);
 
 const axesHelper = new AxesHelper(500000000);
 scene.addObject(axesHelper);
@@ -83,7 +98,7 @@ const params = {
 };
 
 gui.add(params, 'setView').onChange(() => {
-    camera.setView({
+    camera.flyTo({
         destination: cameraCV.position,
         orientation: {
             direction: cameraCV.direction,
@@ -107,7 +122,7 @@ gui.add(params, 'moveUp').onChange(() => {
     //     },
     // });
 
-    camera.setView({
+    camera.flyTo({
         destination: new Cartesian3(12957714.524789115, 3484578.2582445266, 8731.080157084989),
         orientation: {
             direction: new Cartesian3(0.007893114053294072, 0.4873697273695402, -0.87316003549995469),
@@ -123,7 +138,9 @@ gui.add(params, 'moveRight').onChange(() => {
 });
 
 gui.add(params, 'wiriframe').onChange((value: boolean) => {
-    scene.globe.wiriframe = value;
+    // scene.globe.wiriframe = value;
+
+    console.log(scene.mapProjection.unproject(cameraCV.position));
 });
 
 // camera.changed.addEventListener(() => {

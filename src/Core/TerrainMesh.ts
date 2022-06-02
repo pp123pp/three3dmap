@@ -1,3 +1,4 @@
+import { typeIntArray } from '@/Type';
 import { BufferGeometry } from 'three';
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
@@ -119,7 +120,7 @@ export default class TerrainMesh {
     constructor(
         center: Cartesian3,
         vertices: Float32Array,
-        indices: Uint16Array | Uint8Array,
+        indices: typeIntArray,
         indexCountWithoutSkirts: number,
         vertexCountWithoutSkirts: number,
         minimumHeight: number,

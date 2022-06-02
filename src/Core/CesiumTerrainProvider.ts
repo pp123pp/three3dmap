@@ -1,4 +1,5 @@
 import TileAvailability from '@/Scene/TileAvailability';
+import { TilingScheme } from '@/Type';
 import AttributeCompression from './AttributeCompression';
 import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
@@ -61,8 +62,6 @@ class LayerInformation {
         this.availabilityPromiseCache = {};
     }
 }
-
-export type TilingScheme = WebMercatorTilingScheme | GeographicTilingScheme;
 
 /**
  * A {@link TerrainProvider} that accesses terrain data in a Cesium terrain format.
@@ -831,7 +830,7 @@ function createQuantizedMeshTerrainData(provider: any, buffer: any, level: any, 
     });
 }
 
-function requestTileGeometry(provider: any, x: any, y: any, level: any, layerToUse: any, request: any) {
+function requestTileGeometry(provider: CesiumTerrainProvider, x: number, y: number, level: number, layerToUse: LayerInformation, request?: Request) {
     if (!defined(layerToUse)) {
         return Promise.reject(new RuntimeError("Terrain tile doesn't exist"));
     }

@@ -23,6 +23,7 @@ import Rectangle from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import Transforms from '@/Core/Transforms';
 import { Frustum, MathUtils, Matrix4, OrthographicCamera, Vector3 } from 'three';
+import CameraFlightPath from './CameraFlightPath';
 import MapScene from './MapScene';
 import PerspectiveFrustumCamera from './PerspectiveFrustumCamera';
 
@@ -49,6 +50,20 @@ interface ISetViewOptions {
     endTransform?: CesiumMatrix4;
     convert?: number;
 }
+
+const scratchFlyToDestination = new Cartesian3();
+const newOptions: any = {
+    destination: undefined,
+    heading: undefined,
+    pitch: undefined,
+    roll: undefined,
+    duration: undefined,
+    complete: undefined,
+    cancel: undefined,
+    endTransform: undefined,
+    maximumHeight: undefined,
+    easingFunction: undefined,
+};
 
 const lookScratchQuaternion = new CesiumQuaternion();
 const lookScratchMatrix = new CesiumMatrix3();
@@ -263,6 +278,8 @@ export default class MapCamera {
     _viewMatrix = new CesiumMatrix4();
     _invViewMatrix = new CesiumMatrix4();
     _maxCoord: Cartesian3;
+
+    _currentFlight: any;
     constructor(scene: MapScene, options: IMapCamera) {
         this.frustum = new PerspectiveFrustumCamera(options);
         this.frustum.scene = scene;
@@ -1080,6 +1097,215 @@ export default class MapCamera {
     worldToCameraCoordinates(cartesian: Cartesian4, result = new Cartesian4()): Cartesian4 {
         updateMembers(this);
         return CesiumMatrix4.multiplyByVector(this._actualInvTransform, cartesian, result);
+    }
+
+    /**
+     * Cancels the current camera flight and leaves the camera at its current location.
+     * If no flight is in progress, this this function does nothing.
+     */
+    cancelFlight() {
+        if (defined(this._currentFlight)) {
+            this._currentFlight.cancelTween();
+            this._currentFlight = undefined;
+        }
+    }
+
+    /**
+     * Completes the current camera flight and moves the camera immediately to its final destination.
+     * If no flight is in progress, this this function does nothing.
+     */
+    completeFlight() {
+        if (defined(this._currentFlight)) {
+            this._currentFlight.cancelTween();
+
+            const options = {
+                destination: undefined,
+                orientation: {
+                    heading: undefined,
+                    pitch: undefined,
+                    roll: undefined,
+                },
+            };
+
+            options.destination = newOptions.destination;
+            options.orientation.heading = newOptions.heading;
+            options.orientation.pitch = newOptions.pitch;
+            options.orientation.roll = newOptions.roll;
+
+            this.setView(options);
+
+            if (defined(this._currentFlight.complete)) {
+                this._currentFlight.complete();
+            }
+
+            this._currentFlight = undefined;
+        }
+    }
+
+    /**
+     * Flies the camera from its current position to a new position.
+     *
+     * @param {Object} options Object with the following properties:
+     * @param {Cartesian3|Rectangle} options.destination The final position of the camera in WGS84 (world) coordinates or a rectangle that would be visible from a top-down view.
+     * @param {Object} [options.orientation] An object that contains either direction and up properties or heading, pitch and roll properties. By default, the direction will point
+     * towards the center of the frame in 3D and in the negative z direction in Columbus view. The up direction will point towards local north in 3D and in the positive
+     * y direction in Columbus view.  Orientation is not used in 2D when in infinite scrolling mode.
+     * @param {Number} [options.duration] The duration of the flight in seconds. If omitted, Cesium attempts to calculate an ideal duration based on the distance to be traveled by the flight.
+     * @param {Camera.FlightCompleteCallback} [options.complete] The function to execute when the flight is complete.
+     * @param {Camera.FlightCancelledCallback} [options.cancel] The function to execute if the flight is cancelled.
+     * @param {Matrix4} [options.endTransform] Transform matrix representing the reference frame the camera will be in when the flight is completed.
+     * @param {Number} [options.maximumHeight] The maximum height at the peak of the flight.
+     * @param {Number} [options.pitchAdjustHeight] If camera flyes higher than that value, adjust pitch duiring the flight to look down, and keep Earth in viewport.
+     * @param {Number} [options.flyOverLongitude] There are always two ways between 2 points on globe. This option force camera to choose fight direction to fly over that longitude.
+     * @param {Number} [options.flyOverLongitudeWeight] Fly over the lon specifyed via flyOverLongitude only if that way is not longer than short way times flyOverLongitudeWeight.
+     * @param {Boolean} [options.convert] Whether to convert the destination from world coordinates to scene coordinates (only relevant when not using 3D). Defaults to <code>true</code>.
+     * @param {EasingFunction.Callback} [options.easingFunction] Controls how the time is interpolated over the duration of the flight.
+     *
+     * @exception {DeveloperError} If either direction or up is given, then both are required.
+     *
+     * @example
+     * // 1. Fly to a position with a top-down view
+     * viewer.camera.flyTo({
+     *     destination : Cesium.Cartesian3.fromDegrees(-117.16, 32.71, 15000.0)
+     * });
+     *
+     * // 2. Fly to a Rectangle with a top-down view
+     * viewer.camera.flyTo({
+     *     destination : Cesium.Rectangle.fromDegrees(west, south, east, north)
+     * });
+     *
+     * // 3. Fly to a position with an orientation using unit vectors.
+     * viewer.camera.flyTo({
+     *     destination : Cesium.Cartesian3.fromDegrees(-122.19, 46.25, 5000.0),
+     *     orientation : {
+     *         direction : new Cesium.Cartesian3(-0.04231243104240401, -0.20123236049443421, -0.97862924300734),
+     *         up : new Cesium.Cartesian3(-0.47934589305293746, -0.8553216253114552, 0.1966022179118339)
+     *     }
+     * });
+     *
+     * // 4. Fly to a position with an orientation using heading, pitch and roll.
+     * viewer.camera.flyTo({
+     *     destination : Cesium.Cartesian3.fromDegrees(-122.19, 46.25, 5000.0),
+     *     orientation : {
+     *         heading : Cesium.Math.toRadians(175.0),
+     *         pitch : Cesium.Math.toRadians(-35.0),
+     *         roll : 0.0
+     *     }
+     * });
+     */
+    flyTo(options: any): void {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT);
+        let destination = options.destination;
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(destination)) {
+            throw new DeveloperError('destination is required.');
+        }
+        //>>includeEnd('debug');
+
+        const mode = this._mode;
+        if (mode === SceneMode.MORPHING) {
+            return;
+        }
+
+        this.cancelFlight();
+
+        let orientation = defaultValue(options.orientation, defaultValue.EMPTY_OBJECT);
+        if (defined(orientation.direction)) {
+            orientation = directionUpToHeadingPitchRoll(this, destination, orientation, scratchSetViewOptions.orientation);
+        }
+
+        if (defined(options.duration) && options.duration <= 0.0) {
+            const setViewOptions = scratchSetViewOptions;
+            setViewOptions.destination = options.destination;
+            setViewOptions.orientation.heading = orientation.heading;
+            setViewOptions.orientation.pitch = orientation.pitch;
+            setViewOptions.orientation.roll = orientation.roll;
+            setViewOptions.convert = options.convert;
+            setViewOptions.endTransform = options.endTransform;
+            this.setView(setViewOptions);
+            if (typeof options.complete === 'function') {
+                options.complete();
+            }
+            return;
+        }
+
+        const isRectangle = defined(destination.west);
+        if (isRectangle) {
+            destination = this.getRectangleCameraCoordinates(destination, scratchFlyToDestination);
+        }
+
+        const that = this;
+        /* eslint-disable-next-line prefer-const */
+        let flightTween: any;
+
+        newOptions.destination = destination;
+        newOptions.heading = orientation.heading;
+        newOptions.pitch = orientation.pitch;
+        newOptions.roll = orientation.roll;
+        newOptions.duration = options.duration;
+        newOptions.complete = function () {
+            if (flightTween === that._currentFlight) {
+                that._currentFlight = undefined;
+            }
+            if (defined(options.complete)) {
+                options.complete();
+            }
+        };
+        newOptions.cancel = options.cancel;
+        newOptions.endTransform = options.endTransform;
+        newOptions.convert = isRectangle ? false : options.convert;
+        newOptions.maximumHeight = options.maximumHeight;
+        newOptions.pitchAdjustHeight = options.pitchAdjustHeight;
+        newOptions.flyOverLongitude = options.flyOverLongitude;
+        newOptions.flyOverLongitudeWeight = options.flyOverLongitudeWeight;
+        newOptions.easingFunction = options.easingFunction;
+        newOptions.convert = false;
+
+        const scene = this.scene;
+        const tweenOptions = CameraFlightPath.createTween(scene, newOptions);
+        // If the camera doesn't actually need to go anywhere, duration
+        // will be 0 and we can just complete the current flight.
+        if (tweenOptions.duration === 0) {
+            if (typeof tweenOptions.complete === 'function') {
+                tweenOptions.complete();
+            }
+            return;
+        }
+        flightTween = scene.tweens.add(tweenOptions);
+        this._currentFlight = flightTween;
+
+        // Save the final destination view information for the PRELOAD_FLIGHT pass.
+        // let preloadFlightCamera = this.scene.preloadFlightCamera;
+        // if (this._mode !== SceneMode.SCENE2D) {
+        //     if (!defined(preloadFlightCamera)) {
+        //         preloadFlightCamera = MapCamera.clone(this);
+        //     }
+        //     preloadFlightCamera.setView({
+        //         destination: destination,
+        //         orientation: orientation,
+        //     });
+
+        //     this.scene.preloadFlightCullingVolume = preloadFlightCamera.frustum.computeCullingVolume(preloadFlightCamera.positionWC, preloadFlightCamera.directionWC, preloadFlightCamera.upWC);
+        // }
+    }
+
+    /**
+     * @private
+     */
+    static clone(camera: MapCamera, result?: MapCamera): MapCamera {
+        if (!defined(result)) {
+            result = new MapCamera(camera.scene, {} as any);
+        }
+
+        Cartesian3.clone(camera.position, (result as MapCamera).position);
+        Cartesian3.clone(camera.direction, (result as MapCamera).direction);
+        Cartesian3.clone(camera.up, (result as MapCamera).up);
+        Cartesian3.clone(camera.right, (result as MapCamera).right);
+        CesiumMatrix4.clone(camera._transform, (result as MapCamera).transform);
+        (result as MapCamera)._transformChanged = true;
+        (result as MapCamera).frustum = camera.frustum.clone();
+
+        return result as MapCamera;
     }
 }
 
