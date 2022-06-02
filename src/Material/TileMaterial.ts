@@ -251,10 +251,6 @@ class TileMaterial extends ShaderMaterial {
         this.lights = false;
         this.fog = false;
 
-        if (uniformProperties.dayTextures.length === 0 || uniformProperties.dayTextureTranslationAndScale.length === 0 || uniformProperties.dayTextureTexCoordsRectangle.length === 0 || uniformProperties.dayTextureUseWebMercatorT.length === 0) {
-            debugger;
-        }
-
         this.uniforms = {
             u_dayTextures: { value: uniformProperties.dayTextures },
             u_dayTextureTranslationAndScale: { value: uniformProperties.dayTextureTranslationAndScale },

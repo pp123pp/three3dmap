@@ -91,7 +91,7 @@ export default class IonResource extends Resource {
     _makeRequest(options: any) {
         // Don't send ion access token to non-ion servers.
         if (this._isExternal || new Uri(this.url).authority() !== this._ionEndpointDomain) {
-            return Resource.prototype._makeRequest.call(this, options);
+            return (Resource.prototype as any)._makeRequest.call(this, options);
         }
 
         if (!defined(options.headers)) {
@@ -99,7 +99,7 @@ export default class IonResource extends Resource {
         }
         options.headers.Authorization = `Bearer ${this._ionEndpoint.accessToken}`;
 
-        return Resource.prototype._makeRequest.call(this, options);
+        return (Resource.prototype as any)._makeRequest.call(this, options);
     }
 
     clone(result: any) {

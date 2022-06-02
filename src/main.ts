@@ -16,7 +16,6 @@ import Viewer from './Widgets/Viewer/Viewer';
 const gui = new GUI();
 
 const widget = new Viewer('app', {
-    // sceneMode: SceneMode.COLUMBUS_VIEW,
     terrainProvider: new CesiumTerrainProvider({
         url: IonResource.fromAssetId(1),
         requestVertexNormals: false,

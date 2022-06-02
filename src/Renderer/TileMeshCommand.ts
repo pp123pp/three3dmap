@@ -9,7 +9,9 @@ import { BufferGeometry, DoubleSide, Material, Mesh, ShaderMaterial } from 'thre
 interface ITileMeshDerivedCommands {
     colorMaterial: Material | Material[];
     bits12TileMaterial: Material;
-    tileMaterial: Material;
+    tileMaterial: {
+        [key: string]: TileMaterial;
+    };
 }
 
 export default class TileMeshCommand extends Mesh {
@@ -28,8 +30,10 @@ export default class TileMeshCommand extends Mesh {
         this.derivedCommands = {
             colorMaterial: this.material,
             bits12TileMaterial: undefined as any,
-            tileMaterial: undefined as any,
+            tileMaterial: {},
         };
+
+        (this.material as any).defines = {};
         // this.pass = CommandRenderPass.OPAQUE;
     }
 
@@ -38,9 +42,10 @@ export default class TileMeshCommand extends Mesh {
 
         const material = this.material as TileMaterial;
 
-        if (!material.isTileMaterial) {
-            (this.material as Material).dispose();
-            this.material = new TileMaterial({
+        const materialKey = isBITS12.toString() + defined(material.defines['QUANTIZATION_BITS12']).toString() + uniformMapProperties.dayTextures.length + surfaceShaderSetOptions.numberOfDayTextures;
+
+        if (!defined(this.derivedCommands.tileMaterial[materialKey])) {
+            const material = new TileMaterial({
                 uniformMapProperties,
                 surfaceShaderSetOptions,
                 isBITS12,
@@ -49,57 +54,57 @@ export default class TileMeshCommand extends Mesh {
                 },
             });
 
+            this.derivedCommands.tileMaterial[materialKey] = material;
+            this.material = material;
             return;
-        }
-
-        if ((isBITS12 && !defined(material.defines['QUANTIZATION_BITS12'])) || uniformMapProperties.dayTextures.length !== material.defines['TEXTURE_UNITS']) {
-            // material.defines['QUANTIZATION_BITS12'] = '';
-
-            // material.fragmentShader = tileMaterialFS;
-
-            // material.fragmentShader = material.fragmentShader.replace(/TEXTURE_UNITS/g, material.dayTextures.length as any);
-
-            // material.defines['TEXTURE_UNITS'] = material.dayTextures.length;
-            // material.needsUpdate = true;
-
-            material.dispose();
-
-            this.material = new TileMaterial({
-                uniformMapProperties,
-                surfaceShaderSetOptions,
-                isBITS12,
-                materialOptions: {
-                    side: DoubleSide,
-                },
-            });
+        } else {
+            this.material = this.derivedCommands.tileMaterial[materialKey];
 
             return;
         }
 
-        if ((!isBITS12 && defined(material.defines['QUANTIZATION_BITS12'])) || material.dayTextures.length !== material.defines['TEXTURE_UNITS']) {
-            // (this.material as any).defines['QUANTIZATION_BITS12'] = '';
+        // if (!material.isTileMaterial) {
+        //     (this.material as Material).dispose();
+        //     this.material = new TileMaterial({
+        //         uniformMapProperties,
+        //         surfaceShaderSetOptions,
+        //         isBITS12,
+        //         materialOptions: {
+        //             side: DoubleSide,
+        //         },
+        //     });
 
-            // delete material.defines['QUANTIZATION_BITS12'];
-            // material.defines['TEXTURE_UNITS'] = material.dayTextures.length;
+        //     return;
+        // }
 
-            // material.fragmentShader = tileMaterialFS;
+        // if ((isBITS12 && !defined(material.defines['QUANTIZATION_BITS12'])) || uniformMapProperties.dayTextures.length !== material.defines['TEXTURE_UNITS']) {
+        //     material.dispose();
 
-            // material.fragmentShader = material.fragmentShader.replace(/TEXTURE_UNITS/g, material.dayTextures.length.toString());
+        //     this.material = new TileMaterial({
+        //         uniformMapProperties,
+        //         surfaceShaderSetOptions,
+        //         isBITS12,
+        //         materialOptions: {
+        //             side: DoubleSide,
+        //         },
+        //     });
 
-            // material.needsUpdate = true;
+        //     return;
+        // }
 
-            material.dispose();
+        // if ((!isBITS12 && defined(material.defines['QUANTIZATION_BITS12'])) || material.dayTextures.length !== material.defines['TEXTURE_UNITS']) {
+        //     material.dispose();
 
-            this.material = new TileMaterial({
-                uniformMapProperties,
-                surfaceShaderSetOptions,
-                isBITS12,
-                materialOptions: {
-                    side: DoubleSide,
-                },
-            });
-            return;
-        }
+        //     this.material = new TileMaterial({
+        //         uniformMapProperties,
+        //         surfaceShaderSetOptions,
+        //         isBITS12,
+        //         materialOptions: {
+        //             side: DoubleSide,
+        //         },
+        //     });
+        //     return;
+        // }
     }
 
     // preUpdate(): void {

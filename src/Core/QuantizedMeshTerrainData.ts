@@ -1,3 +1,4 @@
+import BoundingSphere from './BoundingSphere';
 import Cartesian3 from './Cartesian3';
 import { TilingScheme } from './CesiumTerrainProvider';
 import createVerticesFromQuantizedTerrainMesh from './createVerticesFromQuantizedTerrainMesh';
@@ -5,8 +6,10 @@ import defaultValue from './defaultValue';
 import defined from './defined';
 import DeveloperError from './DeveloperError';
 import IndexDatatype from './IndexDatatype';
+import OrientedBoundingBox from './OrientedBoundingBox';
 import TerrainEncoding from './TerrainEncoding';
 import TerrainMesh from './TerrainMesh';
+import upsampleQuantizedTerrainMesh from './upsampleQuantizedTerrainMesh';
 
 export default class QuantizedMeshTerrainData {
     _quantizedVertices: any;
@@ -332,7 +335,7 @@ export default class QuantizedMeshTerrainData {
             const indicesTypedArray = IndexDatatype.createTypedArray(quantizedVertices.length / 3, result.indices);
             let encodedNormals;
             if (defined(result.encodedNormals)) {
-                encodedNormals = new Uint8Array(result.encodedNormals);
+                encodedNormals = new Uint8Array(result.encodedNormals as any);
             }
 
             return new QuantizedMeshTerrainData({

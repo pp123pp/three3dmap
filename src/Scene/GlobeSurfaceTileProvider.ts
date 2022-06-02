@@ -766,6 +766,10 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
 
         material.wireframe = frameState.scene.globe.wiriframe;
 
+        if (material.defines.TEXTURE_UNITS !== material.uniforms.u_dayTextures.value.length) {
+            debugger;
+        }
+
         if (frameState.cullingVolume.computeVisibility(command.boundingVolume) !== Intersect.OUTSIDE) {
             frameState.commandList.push(command);
         }

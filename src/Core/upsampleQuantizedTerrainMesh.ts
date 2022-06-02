@@ -40,7 +40,7 @@ let depth = -1;
 const cartesianScratch1 = [new Cartesian3(), new Cartesian3()];
 const cartesianScratch2 = [new Cartesian3(), new Cartesian3()];
 
-function upsampleQuantizedTerrainMesh(parameters: any, transferableObjects: any) {
+function upsampleQuantizedTerrainMesh(parameters: any, transferableObjects?: any) {
     const isEastChild = parameters.isEastChild;
     const isNorthChild = parameters.isNorthChild;
 
@@ -301,10 +301,10 @@ function upsampleQuantizedTerrainMesh(parameters: any, transferableObjects: any)
     let encodedNormals;
     if (hasVertexNormals) {
         const normalArray = new Uint8Array(normalBuffer);
-        transferableObjects.push(vertices.buffer, indicesTypedArray.buffer, normalArray.buffer);
+        // transferableObjects.push(vertices.buffer, indicesTypedArray.buffer, normalArray.buffer);
         encodedNormals = normalArray.buffer;
     } else {
-        transferableObjects.push(vertices.buffer, indicesTypedArray.buffer);
+        // transferableObjects.push(vertices.buffer, indicesTypedArray.buffer);
     }
 
     return {
