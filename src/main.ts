@@ -110,18 +110,6 @@ gui.add(params, 'setView').onChange(() => {
 });
 
 gui.add(params, 'moveUp').onChange(() => {
-    // camera.moveUp(100000);
-
-    // camera.position.set(0, 0, 55972529.261725195);
-    // console.log(camera);
-    // camera.setView({
-    //     destination: new Cartesian3(0, 0, 4972529.261725195),
-    //     orientation: {
-    //         direction: new Cartesian3(0, 0, -1),
-    //         up: new Cartesian3(0, 1, 0),
-    //     },
-    // });
-
     camera.flyTo({
         destination: new Cartesian3(12957714.524789115, 3484578.2582445266, 8731.080157084989),
         orientation: {
@@ -141,6 +129,8 @@ gui.add(params, 'wiriframe').onChange((value: boolean) => {
     // scene.globe.wiriframe = value;
 
     console.log(scene.mapProjection.unproject(cameraCV.position));
+
+    // console.log(cameraCV.position.to)
 });
 
 // camera.changed.addEventListener(() => {
