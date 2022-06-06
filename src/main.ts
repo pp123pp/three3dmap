@@ -1,6 +1,6 @@
 import GUI from 'lil-gui';
 
-import { AxesHelper } from 'three';
+import { AxesHelper, ShaderLib } from 'three';
 import Cartesian2 from './Core/Cartesian2';
 import Cartesian3 from './Core/Cartesian3';
 import CesiumMatrix4 from './Core/CesiumMatrix4';
@@ -16,11 +16,11 @@ import Viewer from './Widgets/Viewer/Viewer';
 const gui = new GUI();
 
 const widget = new Viewer('app', {
-    // terrainProvider: new CesiumTerrainProvider({
-    //     url: IonResource.fromAssetId(1),
-    //     requestVertexNormals: false,
-    //     requestWaterMask: false,
-    // }),
+    terrainProvider: new CesiumTerrainProvider({
+        url: IonResource.fromAssetId(1),
+        requestVertexNormals: false,
+        requestWaterMask: false,
+    }),
 });
 
 const { scene, camera } = widget;
@@ -67,14 +67,6 @@ scene.imageryLayers.addImageryProvider(
 const axesHelper = new AxesHelper(500000000);
 scene.addObject(axesHelper);
 
-// scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
-// const ps = new Cartesian3(63916973.15163071, 3088494.933613418, 9994134.16404095);
-// camera.setView({
-//     destination: ps,
-// });
-
-console.log(CesiumMatrix4.IDENTITY);
-
 const cameraCV = {
     // position: new Cartesian3(-9183857.990445074, 3914472.0508939545, 25972529.261725195),
     // direction: new Cartesian3(3.72216724667275e-14, -0.0003113250666032521, -0.9999999515383503),
@@ -84,11 +76,6 @@ const cameraCV = {
     direction: new Cartesian3(0, 0, -1),
     up: new Cartesian3(-4.609724166087824e-15, 0.9999999515383503, -0.0003113250666404997),
 };
-
-// document.getElementById('btn').onclick = () => {
-//     // console.log(camera.getPickRay(new Cartesian2(500, 500)));
-//     // camera.moveRight(10000000);
-// };
 
 const params = {
     setView: true,
@@ -133,6 +120,4 @@ gui.add(params, 'wiriframe').onChange((value: boolean) => {
     // console.log(cameraCV.position.to)
 });
 
-// camera.changed.addEventListener(() => {
-//     console.log(camera.position.z);
-// });
+console.log(ShaderLib.basic);

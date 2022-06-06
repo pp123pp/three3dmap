@@ -1,10 +1,8 @@
 import BoundingSphere from '@/Core/BoundingSphere';
 import defined from '@/Core/defined';
 import OrientedBoundingBox from '@/Core/OrientedBoundingBox';
-import TerrainQuantization from '@/Core/TerrainQuantization';
-import { TileMaterial, tileMaterialFS } from '@/Material/TileMaterial';
-import FrameState from '@/Scene/FrameState';
-import { BufferGeometry, DoubleSide, Material, Mesh, ShaderMaterial } from 'three';
+import { TileMaterial } from '@/Material/TileMaterial';
+import { BufferGeometry, DoubleSide, Material, Mesh } from 'three';
 
 interface ITileMeshDerivedCommands {
     colorMaterial: Material | Material[];

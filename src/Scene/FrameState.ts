@@ -18,22 +18,15 @@ export interface PassesInterface {
 class FrameState {
     scene: MapScene;
     context: Context;
-    pixelRatio: number;
-    frameNumber: number;
-    mode: number;
-    newFrame: boolean;
-    passes: PassesInterface;
     readonly commandList: any[];
     readonly shadowMaps: any[];
     // cullingVolume: CullingVolume;
-    maximumScreenSpaceError: number;
     afterRender: Array<() => void>;
     mapProjection: any;
-    terrainExaggerationRelativeHeight: number;
-    terrainExaggeration: number;
-    minimumTerrainHeight: number;
     computeCommandList: ComputeCommand[] = [];
     cameraUnderground: boolean;
+
+    maximumScreenSpaceError = 2.0;
 
     /**
      * @typedef FrameState.ShadowState
@@ -101,79 +94,101 @@ class FrameState {
          */
         enabled: false,
         density: 1.8367740081812416e-11,
-        sse: undefined,
-        minimumBrightness: undefined,
+        sse: 0,
+        minimumBrightness: 0,
     };
 
     cullingVolume = new CullingVolume();
     // globeTranslucencyState?: GlobeTranslucencyState;
 
+    /**
+     * <code>true</code> if a new frame has been issued and the frame number has been updated.
+     *
+     * @type {Boolean}
+     * @default false
+     */
+    newFrame = false;
+
+    /**
+     * The current frame number.
+     *
+     * @type {Number}
+     * @default 0
+     */
+    frameNumber = 0.0;
+
+    pixelRatio = 1.0;
+
+    /**
+     * The current mode of the scene.
+     *
+     * @type {SceneMode}
+     * @default {@link SceneMode.SCENE3D}
+     */
+    mode = SceneMode.SCENE3D;
+
+    /**
+     * @typedef FrameState.Passes
+     * @type {Object}
+     * @property {Boolean} render <code>true</code> if the primitive should update for a render pass, <code>false</code> otherwise.
+     * @property {Boolean} pick <code>true</code> if the primitive should update for a picking pass, <code>false</code> otherwise.
+     * @property {Boolean} depth <code>true</code> if the primitive should update for a depth only pass, <code>false</code> otherwise.
+     * @property {Boolean} postProcess <code>true</code> if the primitive should update for a per-feature post-process pass, <code>false</code> otherwise.
+     * @property {Boolean} offscreen <code>true</code> if the primitive should update for an offscreen pass, <code>false</code> otherwise.
+     */
+
+    /**
+     * @type {FrameState.Passes}
+     */
+    passes = {
+        /**
+         * @default false
+         */
+        render: false,
+        /**
+         * @default false
+         */
+        pick: false,
+        /**
+         * @default false
+         */
+        depth: false,
+        /**
+         * @default false
+         */
+        postProcess: false,
+        /**
+         * @default false
+         */
+        offscreen: false,
+    };
+
+    /**
+     * A scalar used to exaggerate the terrain.
+     * @type {Number}
+     * @default 1.0
+     */
+    terrainExaggeration = 1.0;
+
+    /**
+     * The height relative to which terrain is exaggerated.
+     * @type {Number}
+     * @default 0.0
+     */
+    terrainExaggerationRelativeHeight = 0.0;
+
+    /**
+     * The minimum terrain height out of all rendered terrain tiles. Used to improve culling for objects underneath the ellipsoid but above terrain.
+     *
+     * @type {Number}
+     * @default 0.0
+     */
+    minimumTerrainHeight = 0.0;
+
     constructor(scene: MapScene) {
         this.scene = scene;
 
         this.context = scene.context;
-
-        /**
-         * <code>true</code> if a new frame has been issued and the frame number has been updated.
-         *
-         * @type {Boolean}
-         * @default false
-         */
-        this.newFrame = false;
-
-        /**
-         * The current frame number.
-         *
-         * @type {Number}
-         * @default 0
-         */
-        this.frameNumber = 0.0;
-
-        this.pixelRatio = 1.0;
-
-        /**
-         * The current mode of the scene.
-         *
-         * @type {SceneMode}
-         * @default {@link SceneMode.SCENE3D}
-         */
-        this.mode = SceneMode.SCENE3D;
-
-        /**
-         * @typedef FrameState.Passes
-         * @type {Object}
-         * @property {Boolean} render <code>true</code> if the primitive should update for a render pass, <code>false</code> otherwise.
-         * @property {Boolean} pick <code>true</code> if the primitive should update for a picking pass, <code>false</code> otherwise.
-         * @property {Boolean} depth <code>true</code> if the primitive should update for a depth only pass, <code>false</code> otherwise.
-         * @property {Boolean} postProcess <code>true</code> if the primitive should update for a per-feature post-process pass, <code>false</code> otherwise.
-         * @property {Boolean} offscreen <code>true</code> if the primitive should update for an offscreen pass, <code>false</code> otherwise.
-         */
-
-        /**
-         * @type {FrameState.Passes}
-         */
-        this.passes = {
-            /**
-             * @default false
-             */
-            render: false,
-            /**
-             * @default false
-             */
-            pick: false,
-            /**
-             * @default false
-             */
-            depth: false,
-            /**
-             * @default false
-             */
-            postProcess: false,
-            /**
-             * @default false
-             */
-            offscreen: false,
-        };
 
         this.commandList = [];
 
@@ -181,8 +196,6 @@ class FrameState {
 
         this.shadowMaps = [];
         // this.camera = scene.camera;
-
-        this.maximumScreenSpaceError = 2.0;
 
         this.mapProjection = undefined;
 
@@ -206,36 +219,6 @@ class FrameState {
          * });
          */
         this.afterRender = [];
-
-        /**
-         * A scalar used to exaggerate the terrain.
-         * @type {Number}
-         * @default 1.0
-         */
-        this.terrainExaggeration = 1.0;
-
-        /**
-         * The height relative to which terrain is exaggerated.
-         * @type {Number}
-         * @default 0.0
-         */
-        this.terrainExaggerationRelativeHeight = 0.0;
-
-        /**
-         * The minimum terrain height out of all rendered terrain tiles. Used to improve culling for objects underneath the ellipsoid but above terrain.
-         *
-         * @type {Number}
-         * @default 0.0
-         */
-        this.minimumTerrainHeight = 0.0;
-
-        /**
-         * The {@link GlobeTranslucencyState} object used by the scene.
-         *
-         * @type {GlobeTranslucencyState}
-         * @default undefined
-         */
-        // this.globeTranslucencyState = undefined;
     }
 
     get camera(): MapCamera {

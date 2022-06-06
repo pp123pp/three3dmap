@@ -3,7 +3,7 @@ import defined from './defined';
 import Resource from './Resource';
 
 let defaultTokenCredit: Credit | string;
-const defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI2YzU4ZDFiYS0yY2Q0LTRkYTItYjI1MS1iZjFiYTM2ZmVmNGYiLCJpZCI6MjU5LCJpYXQiOjE2NDg4MzQyNTN9.TTJ-QAXRECpsYbLFn6Pu60v6c21wIR2IOKBO9VSkOnM';
+const defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5MTdhODgxYi1hNzE4LTRlYjAtOWY4Zi0yN2RjNmIxMDA3MWEiLCJpZCI6MjU5LCJpYXQiOjE2NTQwOTk1ODB9.6fgeb1wewbbv88IZBRvjGM6tqNXXc_3x0Lawo8lCt7c';
 
 export default class Ion {
     static defaultAccessToken = defaultAccessToken;

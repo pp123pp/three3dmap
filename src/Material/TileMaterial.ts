@@ -4,7 +4,7 @@ import Cartesian4 from '@/Core/Cartesian4';
 import CesiumMatrix4 from '@/Core/CesiumMatrix4';
 import defined from '@/Core/defined';
 import { destroyObject } from '@/Core/destroyObject';
-import { CanvasTexture, Matrix4, ShaderMaterial, ShaderMaterialParameters, Vector3, Vector4 } from 'three';
+import { CanvasTexture, Color, Matrix4, ShaderMaterial, ShaderMaterialParameters, Vector3, Vector4 } from 'three';
 
 interface ITileMaterialOptions {
     materialOptions?: ShaderMaterialParameters;
@@ -37,7 +37,6 @@ const vertexShader = `
 uniform vec4 u_tileRectangle;
 uniform vec3 rtc;
 varying vec3 v_textureCoordinates;
-
 
 
 float get2DGeographicYPositionFraction(vec2 textureCoordinates)
@@ -127,118 +126,12 @@ void main(){
 
     gl_Position = getPosition(transformed, height, textureCoordinates);
 
-    // gl_Position = projectionMatrix * modelViewMatrix *  vec4( transformed, 1.0 );
-
     v_textureCoordinates = vec3(textureCoordinates, webMercatorT);
 
     #include <logdepthbuf_vertex>
-}
-
-`;
-
-export const tileMaterialFS = `
-
-
-#define INCLUDE_WEB_MERCATOR_Y
-
-
-#include <common>
-#include <packing>
-#include <logdepthbuf_pars_fragment>
-
-varying vec3 v_textureCoordinates;
-uniform vec4 u_initialColor;
-uniform vec4 diffuse;
-
-
-#if TEXTURE_UNITS > 0
-    uniform sampler2D u_dayTextures[TEXTURE_UNITS];
-    uniform vec4 u_dayTextureTranslationAndScale[TEXTURE_UNITS];
-    uniform bool u_dayTextureUseWebMercatorT[TEXTURE_UNITS];
-    uniform vec4 u_dayTextureTexCoordsRectangle[TEXTURE_UNITS];
-#endif
-
-
-vec4 sampleAndBlend(
-    vec4 previousColor,
-    sampler2D textureToSample,
-    vec2 tileTextureCoordinates,
-    vec4 textureCoordinateRectangle,
-    vec4 textureCoordinateTranslationAndScale,
-    float textureAlpha,
-    float textureBrightness,
-    float textureContrast,
-    float textureHue,
-    float textureSaturation,
-    float textureOneOverGamma,
-    float split)
-{
-
-
-    vec2 alphaMultiplier = step(textureCoordinateRectangle.st, tileTextureCoordinates);
-    textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
-
-    alphaMultiplier = step(vec2(0.0), textureCoordinateRectangle.pq - tileTextureCoordinates);
-    textureAlpha = textureAlpha * alphaMultiplier.x * alphaMultiplier.y;
-
-    vec2 translation = textureCoordinateTranslationAndScale.xy;
-    vec2 scale = textureCoordinateTranslationAndScale.zw;
-    vec2 textureCoordinates = tileTextureCoordinates * scale + translation;
-    vec4 value = texture2D(textureToSample, textureCoordinates);
-    vec3 color = value.rgb;
-    float alpha = value.a;
-
-
-
-    float sourceAlpha = alpha * textureAlpha;
-    float outAlpha = mix(previousColor.a, 1.0, sourceAlpha);
-    vec3 outColor = mix(previousColor.rgb * previousColor.a, color, sourceAlpha) / outAlpha;
-    return vec4(outColor, outAlpha);
-
-
-
 
 }
 
-
-vec4 computeDayColor(vec4 initialColor, vec3 textureCoordinates)
-{
-    vec4 color = initialColor;
-
-    #pragma unroll_loop_start
-    for ( int i = 0; i < TEXTURE_UNITS; i ++ ) {
-
-        color = sampleAndBlend(
-            color,
-            u_dayTextures[ i ],
-            u_dayTextureUseWebMercatorT[ i ] ? textureCoordinates.xz : textureCoordinates.xy,
-            u_dayTextureTexCoordsRectangle[ i ],
-            u_dayTextureTranslationAndScale[ i ],
-            1.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-        );
-
-    }
-    #pragma unroll_loop_end
-
-
-
-    return color;
-}
-
-void main(void){
-    #include <logdepthbuf_fragment>
-
-
-    gl_FragColor = computeDayColor(u_initialColor, clamp(v_textureCoordinates, 0.0, 1.0));
-
-    // gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-}
 `;
 
 class TileMaterial extends ShaderMaterial {
@@ -512,6 +405,7 @@ class TileMaterial extends ShaderMaterial {
         //     return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
         // }
         
+
         void main(void){
             
             #include <logdepthbuf_fragment>
@@ -521,7 +415,6 @@ class TileMaterial extends ShaderMaterial {
             #include <tonemapping_fragment>
             
             gl_FragColor = LinearTosRGB( gl_FragColor );
-
         }
         `;
 

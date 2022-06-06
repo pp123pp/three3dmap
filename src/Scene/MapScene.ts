@@ -21,6 +21,7 @@ import FrameState from './FrameState';
 import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
 import MapCamera from './MapCamera';
+import MapFogExp2 from './MapFogExp2';
 import ScreenSpaceCameraController from './ScreenSpaceCameraController';
 
 export type Type_TerrainProvider = EllipsoidTerrainProvider | CesiumTerrainProvider;
@@ -117,6 +118,8 @@ function render(scene: MapScene) {
 
     scene.updateEnvironment();
     scene.updateAndExecuteCommands(scene.backgroundColor);
+
+    scene.mapFogExp2.update(frameState);
 
     if (defined(scene.globe)) {
         scene.globe.endFrame(frameState);
@@ -216,6 +219,8 @@ export default class MapScene extends Scene {
     _cameraUnderground = false;
 
     readonly morphStart = new Emit();
+
+    mapFogExp2 = new MapFogExp2(0xffffff, 0.002);
     constructor(options: SceneOptions) {
         super();
 
