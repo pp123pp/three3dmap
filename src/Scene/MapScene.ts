@@ -7,6 +7,7 @@ import Ellipsoid from '@/Core/Ellipsoid';
 import EllipsoidTerrainProvider from '@/Core/EllipsoidTerrainProvider';
 import Emit from '@/Core/Emit';
 import GeographicProjection from '@/Core/GeographicProjection';
+import { Object3DCollection } from '@/Core/Object3DCollection';
 import { PrimitiveCollection } from '@/Core/PrimitiveCollection';
 import { RenderCollection } from '@/Core/RenderCollection';
 import RequestScheduler from '@/Core/RequestScheduler';
@@ -221,6 +222,8 @@ export default class MapScene extends Scene {
     readonly morphStart = new Emit();
 
     mapFogExp2 = new MapFogExp2(0xffffff, 0.002);
+
+    meshCollection = new Object3DCollection();
     constructor(options: SceneOptions) {
         super();
 
@@ -252,6 +255,8 @@ export default class MapScene extends Scene {
         this._globe = new Globe(ellipsoid);
 
         this.frustumCulled = false;
+
+        this.addObject(this.meshCollection);
     }
 
     get camera(): MapCamera {

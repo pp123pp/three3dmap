@@ -94,7 +94,7 @@ export default class MapFogExp2 extends FogExp2 {
     }
 
     update(frameState: FrameState): void {
-        const enabled = (frameState.fog.enabled = this.enabled);
+        const enabled = frameState.fog.enabled === this.enabled;
 
         if (!enabled) {
             frameState.scene.fog = null;

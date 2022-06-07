@@ -1,3 +1,4 @@
+import BoundingSphere from '@/Core/BoundingSphere';
 import Cartesian2 from '@/Core/Cartesian2';
 import Cartesian3 from '@/Core/Cartesian3';
 import Cartesian4 from '@/Core/Cartesian4';
@@ -17,11 +18,13 @@ import EllipsoidGeodesic from '@/Core/EllipsoidGeodesic';
 import Emit from '@/Core/Emit';
 import GeographicProjection from '@/Core/GeographicProjection';
 import { getTimestamp } from '@/Core/getTimestamp';
+import HeadingPitchRange from '@/Core/HeadingPitchRange';
 import HeadingPitchRoll from '@/Core/HeadingPitchRoll';
 import IntersectionTests from '@/Core/IntersectionTests';
 import Rectangle from '@/Core/Rectangle';
 import { SceneMode } from '@/Core/SceneMode';
 import Transforms from '@/Core/Transforms';
+import { IFlyToBoundingSphere } from '@/Type';
 import { Frustum, MathUtils, Matrix4, OrthographicCamera, Vector3 } from 'three';
 import CameraFlightPath from './CameraFlightPath';
 import MapScene from './MapScene';
@@ -50,7 +53,7 @@ interface ISetViewOptions {
     endTransform?: CesiumMatrix4;
     convert?: number;
 }
-
+const MINIMUM_ZOOM = 100.0;
 const scratchFlyToDestination = new Cartesian3();
 const newOptions: any = {
     destination: undefined,
@@ -102,6 +105,15 @@ const scratchSetViewTransform2 = new CesiumMatrix4();
 const scratchSetViewQuaternion = new CesiumQuaternion();
 const scratchSetViewMatrix3 = new CesiumMatrix3();
 const scratchSetViewCartographic = new Cartographic();
+
+const scratchflyToBoundingSphereTransform = new CesiumMatrix4();
+const scratchflyToBoundingSphereDestination = new Cartesian3();
+const scratchflyToBoundingSphereDirection = new Cartesian3();
+const scratchflyToBoundingSphereUp = new Cartesian3();
+const scratchflyToBoundingSphereRight = new Cartesian3();
+const scratchFlyToBoundingSphereCart4 = new Cartesian4();
+const scratchFlyToBoundingSphereQuaternion = new CesiumQuaternion();
+const scratchFlyToBoundingSphereMatrix3 = new CesiumMatrix3();
 
 const pickPerspCenter = new Cartesian3();
 const pickPerspXDir = new Cartesian3();
@@ -301,6 +313,8 @@ export default class MapCamera {
         Cartesian3.normalize(this.position, this.position);
         Cartesian3.multiplyByScalar(this.position, mag, this.position);
     }
+
+    static DEFAULT_OFFSET = new HeadingPitchRange(0.0, -CesiumMath.PI_OVER_FOUR, 0.0);
 
     static TRANSFORM_2D = new CesiumMatrix4().fromArray([0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1]);
 
@@ -1290,6 +1304,89 @@ export default class MapCamera {
     }
 
     /**
+     * Flies the camera to a location where the current view contains the provided bounding sphere.
+     *
+     * <p> The offset is heading/pitch/range in the local east-north-up reference frame centered at the center of the bounding sphere.
+     * The heading and the pitch angles are defined in the local east-north-up reference frame.
+     * The heading is the angle from y axis and increasing towards the x axis. Pitch is the rotation from the xy-plane. Positive pitch
+     * angles are below the plane. Negative pitch angles are above the plane. The range is the distance from the center. If the range is
+     * zero, a range will be computed such that the whole bounding sphere is visible.</p>
+     *
+     * <p>In 2D and Columbus View, there must be a top down view. The camera will be placed above the target looking down. The height above the
+     * target will be the range. The heading will be aligned to local north.</p>
+     *
+     * @param {BoundingSphere} boundingSphere The bounding sphere to view, in world coordinates.
+     * @param {Object} [options] Object with the following properties:
+     * @param {Number} [options.duration] The duration of the flight in seconds. If omitted, Cesium attempts to calculate an ideal duration based on the distance to be traveled by the flight.
+     * @param {HeadingPitchRange} [options.offset] The offset from the target in the local east-north-up reference frame centered at the target.
+     * @param {Camera.FlightCompleteCallback} [options.complete] The function to execute when the flight is complete.
+     * @param {Camera.FlightCancelledCallback} [options.cancel] The function to execute if the flight is cancelled.
+     * @param {Matrix4} [options.endTransform] Transform matrix representing the reference frame the camera will be in when the flight is completed.
+     * @param {Number} [options.maximumHeight] The maximum height at the peak of the flight.
+     * @param {Number} [options.pitchAdjustHeight] If camera flyes higher than that value, adjust pitch duiring the flight to look down, and keep Earth in viewport.
+     * @param {Number} [options.flyOverLongitude] There are always two ways between 2 points on globe. This option force camera to choose fight direction to fly over that longitude.
+     * @param {Number} [options.flyOverLongitudeWeight] Fly over the lon specifyed via flyOverLongitude only if that way is not longer than short way times flyOverLongitudeWeight.
+     * @param {EasingFunction.Callback} [options.easingFunction] Controls how the time is interpolated over the duration of the flight.
+     */
+    flyToBoundingSphere(boundingSphere: BoundingSphere, options?: IFlyToBoundingSphere): void {
+        options = defaultValue(options, defaultValue.EMPTY_OBJECT) as IFlyToBoundingSphere;
+        const scene2D = this._mode === SceneMode.SCENE2D;
+        //|| this._mode === SceneMode.COLUMBUS_VIEW;
+        this._setTransform(CesiumMatrix4.IDENTITY);
+        const offset = adjustBoundingSphereOffset(this, boundingSphere, options.offset);
+
+        let position;
+        if (scene2D) {
+            position = Cartesian3.multiplyByScalar(Cartesian3.UNIT_Z, offset.range, scratchflyToBoundingSphereDestination);
+        } else {
+            position = offsetFromHeadingPitchRange(offset.heading, offset.pitch, offset.range);
+        }
+
+        // const transform = (Transforms as any).eastNorthUpToFixedFrame(boundingSphere.center, Ellipsoid.WGS84, scratchflyToBoundingSphereTransform);
+
+        const transform = CesiumMatrix4.IDENTITY;
+        CesiumMatrix4.multiplyByPoint(transform, position, position);
+
+        let direction;
+        let up;
+
+        if (!scene2D) {
+            direction = Cartesian3.subtract(boundingSphere.center, position, scratchflyToBoundingSphereDirection);
+            Cartesian3.normalize(direction, direction);
+
+            up = CesiumMatrix4.multiplyByPointAsVector(transform, Cartesian3.UNIT_Z, scratchflyToBoundingSphereUp);
+            if (1.0 - Math.abs(Cartesian3.dot(direction, up)) < CesiumMath.EPSILON6) {
+                const rotateQuat = CesiumQuaternion.fromAxisAngle(direction, offset.heading, scratchFlyToBoundingSphereQuaternion);
+                const rotation = CesiumMatrix3.fromQuaternion(rotateQuat, scratchFlyToBoundingSphereMatrix3);
+
+                Cartesian3.fromCartesian4(CesiumMatrix4.getColumn(transform, 1, scratchFlyToBoundingSphereCart4), up);
+                CesiumMatrix3.multiplyByVector(rotation, up, up);
+            }
+
+            const right = Cartesian3.cross(direction, up, scratchflyToBoundingSphereRight);
+            Cartesian3.cross(right, direction, up);
+            Cartesian3.normalize(up, up);
+        }
+
+        this.flyTo({
+            destination: position,
+            orientation: {
+                direction: direction,
+                up: up,
+            },
+            duration: options.duration,
+            complete: options.complete,
+            cancel: options.cancel,
+            endTransform: options.endTransform,
+            maximumHeight: options.maximumHeight,
+            easingFunction: options.easingFunction,
+            flyOverLongitude: options.flyOverLongitude,
+            flyOverLongitudeWeight: options.flyOverLongitudeWeight,
+            pitchAdjustHeight: options.pitchAdjustHeight,
+        });
+    }
+
+    /**
      * @private
      */
     static clone(camera: MapCamera, result?: MapCamera): MapCamera {
@@ -1929,4 +2026,52 @@ function updateCameraDeltas(camera: MapCamera) {
             camera.timeSinceMoved = Math.max(getTimestamp() - camera._lastMovedTimestamp, 0.0) / 1000.0;
         }
     }
+}
+
+function distanceToBoundingSphere3D(camera: MapCamera, radius: number) {
+    const frustum = camera.frustum;
+    const tanPhi = Math.tan(frustum.fovy * 0.5);
+    const tanTheta = frustum.aspectRatio * tanPhi;
+    return Math.max(radius / tanTheta, radius / tanPhi);
+}
+
+function adjustBoundingSphereOffset(camera: MapCamera, boundingSphere: BoundingSphere, offset?: HeadingPitchRange) {
+    offset = HeadingPitchRange.clone(defined(offset) ? (offset as HeadingPitchRange) : MapCamera.DEFAULT_OFFSET);
+
+    const minimumZoom = camera.scene.screenSpaceCameraController.minimumZoomDistance;
+    const maximumZoom = camera.scene.screenSpaceCameraController.maximumZoomDistance;
+    const range = offset.range;
+    if (!defined(range) || range === 0.0) {
+        const radius = boundingSphere.radius;
+        if (radius === 0.0) {
+            offset.range = MINIMUM_ZOOM;
+        } else if (camera.frustum instanceof OrthographicCamera || camera._mode === SceneMode.SCENE2D) {
+            // offset.range = distanceToBoundingSphere2D(camera, radius);
+        } else {
+            offset.range = distanceToBoundingSphere3D(camera, radius);
+        }
+        offset.range = CesiumMath.clamp(offset.range, minimumZoom, maximumZoom);
+    }
+
+    return offset;
+}
+
+const scratchLookAtHeadingPitchRangeOffset = new Cartesian3();
+const scratchLookAtHeadingPitchRangeQuaternion1 = new CesiumQuaternion();
+const scratchLookAtHeadingPitchRangeQuaternion2 = new CesiumQuaternion();
+const scratchHeadingPitchRangeMatrix3 = new CesiumMatrix3();
+function offsetFromHeadingPitchRange(heading: number, pitch: number, range: number) {
+    pitch = CesiumMath.clamp(pitch, -CesiumMath.PI_OVER_TWO, CesiumMath.PI_OVER_TWO);
+    heading = CesiumMath.zeroToTwoPi(heading) - CesiumMath.PI_OVER_TWO;
+
+    const pitchQuat = CesiumQuaternion.fromAxisAngle(Cartesian3.UNIT_Y, -pitch, scratchLookAtHeadingPitchRangeQuaternion1);
+    const headingQuat = CesiumQuaternion.fromAxisAngle(Cartesian3.UNIT_Z, -heading, scratchLookAtHeadingPitchRangeQuaternion2);
+    const rotQuat = CesiumQuaternion.multiply(headingQuat, pitchQuat, headingQuat);
+    const rotMatrix = CesiumMatrix3.fromQuaternion(rotQuat, scratchHeadingPitchRangeMatrix3);
+
+    const offset = Cartesian3.clone(Cartesian3.UNIT_X, scratchLookAtHeadingPitchRangeOffset);
+    CesiumMatrix3.multiplyByVector(rotMatrix, offset, offset);
+    Cartesian3.negate(offset, offset);
+    Cartesian3.multiplyByScalar(offset, range, offset);
+    return offset;
 }

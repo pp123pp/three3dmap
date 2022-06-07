@@ -1,3 +1,4 @@
+import { Sphere } from 'three';
 import Cartesian3 from './Cartesian3';
 import Cartographic from './Cartographic';
 import CesiumMath from './CesiumMath';
@@ -51,10 +52,11 @@ const distanceSquaredToScratch = new Cartesian3();
  * @see BoundingRectangle
  * @see Packable
  */
-export default class BoundingSphere {
+export default class BoundingSphere extends Sphere {
     center: Cartesian3;
     radius: number;
     constructor(center = Cartesian3.ZERO, radius = 0.0) {
+        super(center, radius);
         // /**
         //  * The center point of the sphere.
         //  * @type {Cartesian3}
@@ -364,13 +366,13 @@ export default class BoundingSphere {
 
         if (leftRadius >= centerSeparation + rightRadius) {
             // Left sphere wins.
-            left.clone(result);
+            left.clone();
             return result;
         }
 
         if (rightRadius >= centerSeparation + leftRadius) {
             // Right sphere wins.
-            right.clone(result);
+            right.clone();
             return result;
         }
 
@@ -386,15 +388,15 @@ export default class BoundingSphere {
         return result;
     }
 
-    /**
-     * Duplicates this BoundingSphere instance.
-     *
-     * @param {BoundingSphere} [result] The object onto which to store the result.
-     * @returns {BoundingSphere} The modified result parameter or a new BoundingSphere instance if none was provided.
-     */
-    clone(result?: BoundingSphere): BoundingSphere {
-        return BoundingSphere.clone(this, result);
-    }
+    // /**
+    //  * Duplicates this BoundingSphere instance.
+    //  *
+    //  * @param {BoundingSphere} [result] The object onto which to store the result.
+    //  * @returns {BoundingSphere} The modified result parameter or a new BoundingSphere instance if none was provided.
+    //  */
+    // clone(result?: BoundingSphere): BoundingSphere {
+    //     return BoundingSphere.clone(this, result);
+    // }
 
     /**
      * Computes the estimated distance squared from the closest point on a bounding sphere to a point.

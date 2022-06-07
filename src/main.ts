@@ -1,6 +1,7 @@
 import GUI from 'lil-gui';
 
-import { AxesHelper, ShaderLib } from 'three';
+import { AxesHelper, Mesh, MeshNormalMaterial, ShaderLib, SphereBufferGeometry } from 'three';
+import BoundingSphere from './Core/BoundingSphere';
 import Cartesian2 from './Core/Cartesian2';
 import Cartesian3 from './Core/Cartesian3';
 import CesiumMatrix4 from './Core/CesiumMatrix4';
@@ -8,6 +9,7 @@ import CesiumTerrainProvider from './Core/CesiumTerrainProvider';
 import defaultValue from './Core/defaultValue';
 import IonResource from './Core/IonResource';
 import { SceneMode } from './Core/SceneMode';
+import DrawMeshCommand from './Renderer/DrawMeshCommand';
 import TileCoordinatesImageryProvider from './Scene/TileCoordinatesImageryProvider';
 import WebMapTileServiceImageryProvider from './Scene/WebMapTileServiceImageryProvider';
 import './Widgets/CesiumWidget.css';
@@ -47,7 +49,7 @@ scene.imageryLayers.addImageryProvider(
 );
 
 // scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
-// scene.globe.visible = false;
+scene.globe.visible = false;
 
 //创建影像服务对象
 scene.imageryLayers.addImageryProvider(
@@ -72,9 +74,9 @@ const cameraCV = {
     // direction: new Cartesian3(3.72216724667275e-14, -0.0003113250666032521, -0.9999999515383503),
     // up: new Cartesian3(-4.609724166087824e-15, 0.9999999515383503, -0.0003113250666404997),
 
-    position: new Cartesian3(0, 0, 55972529.261725195),
-    direction: new Cartesian3(0, 0, -1),
-    up: new Cartesian3(-4.609724166087824e-15, 0.9999999515383503, -0.0003113250666404997),
+    position: new Cartesian3(10, 10, 10),
+    direction: new Cartesian3(1, 1, 1),
+    // up: new Cartesian3(-4.609724166087824e-15, 0.9999999515383503, -0.0003113250666404997),
 };
 
 const params = {
@@ -84,16 +86,10 @@ const params = {
     wiriframe: false,
 };
 
+const bsp = new BoundingSphere(new Cartesian3(0, 0, 0), 10);
+camera.flyToBoundingSphere(bsp);
 gui.add(params, 'setView').onChange(() => {
-    camera.flyTo({
-        destination: cameraCV.position,
-        orientation: {
-            direction: cameraCV.direction,
-            up: cameraCV.up,
-        },
-    });
-
-    console.log(camera);
+    camera.flyToBoundingSphere(bsp);
 });
 
 gui.add(params, 'moveUp').onChange(() => {
@@ -121,3 +117,9 @@ gui.add(params, 'wiriframe').onChange((value: boolean) => {
 });
 
 console.log(ShaderLib.basic);
+
+const geometry = new SphereBufferGeometry(5, 32, 32);
+const mat = new MeshNormalMaterial({ wireframe: true });
+const mesh = new DrawMeshCommand(geometry, mat);
+
+scene.meshCollection.addObject(mesh);

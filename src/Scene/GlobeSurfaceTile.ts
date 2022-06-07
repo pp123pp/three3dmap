@@ -216,7 +216,7 @@ function processTerrainStateMachine(tile: any, frameState: any, terrainProvider:
     // ready for that, let's push it along.
     const parent = tile.parent;
     if (surfaceTile.terrainState === TerrainState.FAILED && parent !== undefined) {
-        const parentReady = parent.data !== undefined && parent.data.terrainData !== undefined && parent.data.terrainData.canUpsample !== false;
+        const parentReady = defined(parent.data) && defined(parent.data.terrainData) && parent.data.terrainData.canUpsample !== false;
         if (!parentReady) {
             GlobeSurfaceTile.processStateMachine(parent, frameState, terrainProvider, imageryLayerCollection, quadtree, vertexArraysToDestroy, true);
         }
