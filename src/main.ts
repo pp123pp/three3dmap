@@ -84,7 +84,7 @@ const cameraCV = {
 const params = {
     setView: true,
     moveUp: true,
-    moveRight: true,
+    moveRight: false,
     azimuth: 90,
     cloud_covr: 0.3,
     hour: 12,
@@ -107,9 +107,11 @@ gui.add(params, 'moveUp').onChange(() => {
     console.log(camera);
 });
 
-gui.add(params, 'moveRight').onChange(() => {
+gui.add(params, 'moveRight').onChange((value: boolean) => {
     // camera.position.set(0, 0, 55972529.261725195);
-    console.log(camera);
+    // console.log(camera);
+
+    scene.sky.visible = value;
 });
 
 gui.add(params, 'azimuth', 0, 360).onChange((value: number) => {

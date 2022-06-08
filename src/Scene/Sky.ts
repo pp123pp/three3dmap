@@ -7,6 +7,8 @@ import sky_fs from '../Shader/sky/sky_fs.glsl';
 import FrameState from './FrameState';
 import MapCamera from './MapCamera';
 import MapScene from './MapScene';
+import Moon from './Moon';
+import Sun from './Sun';
 
 console.log(base_vs);
 
@@ -32,7 +34,6 @@ export default class Sky extends Mesh {
 
     noiseMap: Texture;
 
-    sunMaterial = new SpriteMaterial({ map: this.textureLoader.load('./assets/textures/sky/lensflare1.png'), blending: AdditiveBlending, opacity: 0.5 });
     moonMaterial = new SpriteMaterial({ map: this.textureLoader.load('./assets/textures/sky/lensflare2.png'), opacity: 0.3 });
 
     visible = false;
@@ -41,9 +42,8 @@ export default class Sky extends Mesh {
     needsUpdate = false;
     torad = 0.0174532925199432957;
 
-    sun = new DirectionalLight(0xffffff, 4);
-    moon = new DirectionalLight(0xffffff, 0.8); //new THREE.PointLight( 0x909090, 0.5, 10000, 2 );
-
+    sun: Sun;
+    moon: Moon;
     sunSph = new Spherical();
     moonSph = new Spherical();
 
@@ -63,7 +63,6 @@ export default class Sky extends Mesh {
     r = 0;
     g = 0;
     b = 0;
-    day = 0;
 
     material: ShaderMaterial;
 
@@ -76,12 +75,16 @@ export default class Sky extends Mesh {
 
         this.camera = new PerspectiveCamera();
 
+        this.sun = new Sun(this.size);
+        this.scene.addObject(this.sun);
+
+        this.moon = new Moon(this.size);
+        this.scene.addObject(this.moon);
+
         this.noiseMap = new TextureLoader().load('./assets/textures/sky/noise.png', (texture) => {
             texture.wrapS = texture.wrapT = RepeatWrapping;
             texture.flipY = false;
         });
-
-        this.addLight();
 
         this.materialSky = new ShaderMaterial({
             uniforms: {
@@ -141,35 +144,6 @@ export default class Sky extends Mesh {
         this.material.needsUpdate = true;
 
         this.update();
-
-        // this.callback();
-    }
-
-    addLight(): void {
-        const sunSprite = new Sprite(this.sunMaterial);
-        sunSprite.scale.set(40, 40, 1);
-
-        this.sun.add(sunSprite);
-
-        const moonSprite = new Sprite(this.moonMaterial);
-        moonSprite.scale.set(700, 700, 1);
-
-        this.moon.add(moonSprite);
-
-        this.scene.addObject(this.sun);
-        this.scene.addObject(this.moon);
-
-        this.sunSph.radius = this.size - this.size * 0.1;
-        this.moonSph.radius = this.size - this.size * 0.1;
-
-        const textureFlare3 = this.textureLoader.load('assets/textures/sky/lensflare3.png');
-
-        this.lensflare.addElement(new LensflareElement(this.textureLoader.load('assets/textures/sky/lensflare0.png'), this.size * 0.1, 0, this.sun.color));
-        this.lensflare.addElement(new LensflareElement(textureFlare3, 60, 0.6, this.sun.color));
-        this.lensflare.addElement(new LensflareElement(textureFlare3, 70, 0.7, this.sun.color));
-        this.lensflare.addElement(new LensflareElement(textureFlare3, 120, 0.9, this.sun.color));
-        this.lensflare.addElement(new LensflareElement(textureFlare3, 70, 1, this.sun.color));
-        this.sun.add(this.lensflare);
     }
 
     updateRotation(mainCamera: MapCamera): void {
@@ -180,18 +154,13 @@ export default class Sky extends Mesh {
         // this.camera.rotation.copy(mainCamera.frustum.rotation);
         // this.camera.rotateX(Math.PI / 2);
     }
-    update() {
+    update(): void {
         const setting = this.setting;
 
         setting.inclination = setting.hour * 15 - 90;
 
-        this.sunSph.phi = (setting.inclination - 90) * this.torad;
-        this.sunSph.theta = (setting.azimuth - 90) * this.torad;
-        this.sun.position.setFromSpherical(this.sunSph);
-
-        this.moonSph.phi = (setting.inclination + 90) * this.torad;
-        this.moonSph.theta = (setting.azimuth - 90) * this.torad;
-        this.moon.position.setFromSpherical(this.moonSph);
+        this.sun.update(setting.inclination, this.torad, setting.azimuth);
+        this.moon.update(setting.inclination, this.torad, setting.azimuth);
 
         this.sunPosition = this.sun.position.clone().normalize();
         this.moonPosition = this.sun.position.clone().normalize();
@@ -203,19 +172,8 @@ export default class Sky extends Mesh {
         a.g = a.g > 1.0 ? 1.0 : a.g;
         a.b = a.b > 1.0 ? 1.0 : a.b;
 
-        this.day = a.r;
-
-        this.sun.color.setRGB(a.r, a.g, a.b);
-        this.sunMaterial.color.copy(this.sun.color);
-
-        this.sun.intensity = a.r;
-
-        const ma = 1 - a.r;
-        const mg = 1 - a.g;
-        const mb = 1 - a.b;
-        this.moon.intensity = ma * 0.35;
-        this.moon.color.setRGB(ma, mg, mb);
-        this.moonMaterial.color.copy(this.moon.color);
+        this.sun.setColor(this);
+        this.moon.setColor(this);
 
         this.materialSky.uniforms.t.value = setting.t;
         this.materialSky.uniforms.fog.value = setting.fog;

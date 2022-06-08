@@ -39,7 +39,7 @@ const scratchV1 = new Cartesian3();
 const scratchV2 = new Cartesian3();
 
 function disposeArray(this: any) {
-    this.array = null;
+    // this.array = null;
 }
 
 function upsample(surfaceTile: GlobeSurfaceTile, tile: QuadtreeTile, frameState: FrameState, terrainProvider: EllipsoidTerrainProvider, x: number, y: number, level: number) {
