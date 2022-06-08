@@ -24,6 +24,7 @@ import { ImageryLayerCollection } from './ImageryLayerCollection';
 import MapCamera from './MapCamera';
 import MapFogExp2 from './MapFogExp2';
 import ScreenSpaceCameraController from './ScreenSpaceCameraController';
+import Sky from './Sky';
 
 export type Type_TerrainProvider = EllipsoidTerrainProvider | CesiumTerrainProvider;
 
@@ -174,6 +175,8 @@ function executeCommandsInViewport(firstViewport: boolean, scene: MapScene, back
         executeComputeCommands(scene);
     }
 
+    scene.renderer.clear();
+    scene.sky.render(scene.frameState);
     scene.effectComposerCollection.render();
 }
 
@@ -224,6 +227,8 @@ export default class MapScene extends Scene {
     mapFogExp2 = new MapFogExp2(0xffffff, 0.002);
 
     meshCollection = new Object3DCollection();
+
+    sky: Sky;
     constructor(options: SceneOptions) {
         super();
 
@@ -257,6 +262,10 @@ export default class MapScene extends Scene {
         this.frustumCulled = false;
 
         this.addObject(this.meshCollection);
+
+        this.sky = new Sky(this);
+
+        this.addObject(this.sky);
     }
 
     get camera(): MapCamera {
@@ -341,6 +350,9 @@ export default class MapScene extends Scene {
         this.screenSpaceCameraController.update();
         this.mapCamera.update(this.mode);
         this.mapCamera._updateCameraChanged();
+        this.sky.updateRotation(this.camera);
+
+        this.sky.rotateX(0.001);
     }
 
     requestRender(): void {

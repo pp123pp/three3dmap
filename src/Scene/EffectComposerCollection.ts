@@ -11,6 +11,8 @@ class EffectComposerCollection {
         this.mainEffectComposer = new EffectComposer(renderer, scene.context.colorFrameBuffer);
 
         const renderPass: RenderPass = new RenderPass(scene, scene.camera.frustum);
+
+        renderPass.clear = false;
         this.mainEffectComposer.addPass(renderPass);
     }
 

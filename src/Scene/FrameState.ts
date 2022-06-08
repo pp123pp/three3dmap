@@ -3,6 +3,7 @@ import CullingVolume from '@/Core/CullingVolume';
 import { SceneMode } from '@/Core/SceneMode';
 import { ComputeCommand } from '@/Renderer/ComputeCommand';
 import Context from '@/Renderer/Context';
+import MapRenderer from '@/Renderer/MapRenderer';
 import { Frustum, PerspectiveCamera } from 'three';
 import MapCamera from './MapCamera';
 import MapScene from './MapScene';
@@ -226,6 +227,10 @@ class FrameState {
     }
     get bufferSize(): Cartesian2 {
         return this.scene.drawingBufferSize;
+    }
+
+    get renderer(): MapRenderer {
+        return this.scene.renderer;
     }
 }
 

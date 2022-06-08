@@ -83,7 +83,8 @@ const params = {
     setView: true,
     moveUp: true,
     moveRight: true,
-    wiriframe: false,
+    cloud_covr: 0.3,
+    hour: 12,
 };
 
 const bsp = new BoundingSphere(new Cartesian3(0, 0, 0), 10);
@@ -108,12 +109,19 @@ gui.add(params, 'moveRight').onChange(() => {
     console.log(camera);
 });
 
-gui.add(params, 'wiriframe').onChange((value: boolean) => {
-    // scene.globe.wiriframe = value;
-
-    console.log(scene.mapProjection.unproject(cameraCV.position));
-
-    // console.log(cameraCV.position.to)
+gui.add(params, 'hour', 0, 24, 0.1).onChange((value: number) => {
+    // scene.sky.setData({
+    //     azimuth: 90,
+    //     cloud_covr: 0.3,
+    //     cloud_dens: 40,
+    //     cloud_size: 0.45,
+    //     fog: 0,
+    //     hour: 12.1,
+    //     inclination: 91.95000000000002,
+    //     t: 0,
+    // });
+    scene.sky.setting.hour = value;
+    scene.sky.update();
 });
 
 console.log(ShaderLib.basic);
@@ -121,5 +129,5 @@ console.log(ShaderLib.basic);
 const geometry = new SphereBufferGeometry(5, 32, 32);
 const mat = new MeshNormalMaterial({ wireframe: true });
 const mesh = new DrawMeshCommand(geometry, mat);
-
+mesh.rotateX(Math.PI / 2);
 scene.meshCollection.addObject(mesh);
