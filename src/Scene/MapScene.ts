@@ -21,6 +21,7 @@ import { EffectComposerCollection } from './EffectComposerCollection';
 import FrameState from './FrameState';
 import { Globe } from './Globe';
 import { ImageryLayerCollection } from './ImageryLayerCollection';
+import LightCollection from './LightCollection';
 import MapCamera from './MapCamera';
 import MapFogExp2 from './MapFogExp2';
 import ScreenSpaceCameraController from './ScreenSpaceCameraController';
@@ -228,6 +229,8 @@ export default class MapScene extends Scene {
     meshCollection = new Object3DCollection();
 
     sky: Sky;
+
+    lights = new LightCollection();
     constructor(options: SceneOptions) {
         super();
 
@@ -265,6 +268,8 @@ export default class MapScene extends Scene {
         this.sky = new Sky(this);
 
         this.addObject(this.sky);
+
+        this.addObject(this.lights);
     }
 
     get camera(): MapCamera {

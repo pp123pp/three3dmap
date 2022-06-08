@@ -1,12 +1,12 @@
-import { AdditiveBlending, AmbientLight, BackSide, Color, CubeCamera, CubeTexture, DirectionalLight, DoubleSide, IcosahedronGeometry, LinearMipmapLinearFilter, Mesh, MeshNormalMaterial, PerspectiveCamera, RepeatWrapping, RGBFormat, Scene, ShaderMaterial, SphereBufferGeometry, Spherical, Sprite, SpriteMaterial, sRGBEncoding, Texture, TextureLoader, WebGLCubeRenderTarget } from 'three';
+import Cartesian3 from '@/Core/Cartesian3';
+import { AdditiveBlending, BackSide, Color, CubeCamera, CubeTexture, DirectionalLight, IcosahedronGeometry, LinearMipmapLinearFilter, Mesh, PerspectiveCamera, RepeatWrapping, RGBFormat, Scene, ShaderMaterial, SphereBufferGeometry, Spherical, Sprite, SpriteMaterial, sRGBEncoding, Texture, TextureLoader, WebGLCubeRenderTarget } from 'three';
 import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare';
+import base_vs from '../Shader/sky/base_vs.glsl';
+import dome_fs from '../Shader/sky/dome_fs.glsl';
+import sky_fs from '../Shader/sky/sky_fs.glsl';
 import FrameState from './FrameState';
 import MapCamera from './MapCamera';
-import base_vs from '../Shader/sky/base_vs.glsl';
-import sky_fs from '../Shader/sky/sky_fs.glsl';
-import dome_fs from '../Shader/sky/dome_fs.glsl';
 import MapScene from './MapScene';
-import Cartesian3 from '@/Core/Cartesian3';
 
 console.log(base_vs);
 
@@ -44,8 +44,6 @@ export default class Sky extends Mesh {
     sun = new DirectionalLight(0xffffff, 4);
     moon = new DirectionalLight(0xffffff, 0.8); //new THREE.PointLight( 0x909090, 0.5, 10000, 2 );
 
-    ambient = new AmbientLight(0x3b4c5a, 0.5);
-
     sunSph = new Spherical();
     moonSph = new Spherical();
 
@@ -82,8 +80,6 @@ export default class Sky extends Mesh {
             texture.wrapS = texture.wrapT = RepeatWrapping;
             texture.flipY = false;
         });
-
-        this.geometry = new SphereBufferGeometry(this.size, 30, 15);
 
         this.addLight();
 
@@ -125,6 +121,7 @@ export default class Sky extends Mesh {
 
         this.envMap = this.cubeCameraRender.texture;
 
+        this.geometry = new SphereBufferGeometry(this.size, 30, 15);
         this.material = new ShaderMaterial({
             uniforms: {
                 lightdir: { value: this.sunPosition },
@@ -154,28 +151,13 @@ export default class Sky extends Mesh {
 
         this.sun.add(sunSprite);
 
-        const dd = 20;
-        this.sun.shadow.camera.top = dd;
-        this.sun.shadow.camera.bottom = -dd;
-        this.sun.shadow.camera.left = -dd;
-        this.sun.shadow.camera.right = dd;
-        this.sun.shadow.camera.near = 880;
-        this.sun.shadow.camera.far = 920;
-        this.sun.shadow.mapSize.width = 1024;
-        this.sun.shadow.mapSize.height = 1024;
-        //this.sun.shadow.bias = 0.001;
-        this.sun.shadow.radius = 2;
-        this.sun.castShadow = true;
-
         const moonSprite = new Sprite(this.moonMaterial);
-        moonSprite.scale.set(70, 70, 1);
+        moonSprite.scale.set(700, 700, 1);
 
         this.moon.add(moonSprite);
 
         this.scene.addObject(this.sun);
         this.scene.addObject(this.moon);
-
-        this.scene.addObject(this.ambient);
 
         this.sunSph.radius = this.size - this.size * 0.1;
         this.moonSph.radius = this.size - this.size * 0.1;
@@ -246,6 +228,7 @@ export default class Sky extends Mesh {
         this.needsUpdate = true;
 
         this.sun.position.applyAxisAngle(new Cartesian3(1, 0, 0), Math.PI / 2);
+        this.moon.position.applyAxisAngle(new Cartesian3(1, 0, 0), Math.PI / 2);
 
         if (!this.visible) this.visible = true;
     }
