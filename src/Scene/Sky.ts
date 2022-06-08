@@ -1,5 +1,5 @@
 import Cartesian3 from '@/Core/Cartesian3';
-import { AdditiveBlending, BackSide, Color, CubeCamera, CubeTexture, DirectionalLight, IcosahedronGeometry, LinearMipmapLinearFilter, Mesh, PerspectiveCamera, RepeatWrapping, RGBFormat, Scene, ShaderMaterial, SphereBufferGeometry, Spherical, Sprite, SpriteMaterial, sRGBEncoding, Texture, TextureLoader, WebGLCubeRenderTarget } from 'three';
+import { AdditiveBlending, BackSide, Color, CubeCamera, CubeTexture, DirectionalLight, IcosahedronGeometry, LinearMipmapLinearFilter, Mesh, Object3D, PerspectiveCamera, RepeatWrapping, RGBFormat, Scene, ShaderMaterial, SphereBufferGeometry, Spherical, Sprite, SpriteMaterial, sRGBEncoding, Texture, TextureLoader, WebGLCubeRenderTarget } from 'three';
 import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare';
 import base_vs from '../Shader/sky/base_vs.glsl';
 import dome_fs from '../Shader/sky/dome_fs.glsl';
@@ -12,7 +12,7 @@ import Sun from './Sun';
 
 console.log(base_vs);
 
-export default class Sky extends Mesh {
+export default class Sky extends Object3D {
     readonly scene: MapScene;
     camera: PerspectiveCamera;
     sceneSky = new Scene();
@@ -64,9 +64,11 @@ export default class Sky extends Mesh {
     g = 0;
     b = 0;
 
-    material: ShaderMaterial;
+    // material: ShaderMaterial;
 
     bgScene = new Scene();
+
+    mesh: Mesh;
     constructor(scene: MapScene) {
         super();
 
@@ -124,8 +126,8 @@ export default class Sky extends Mesh {
 
         this.envMap = this.cubeCameraRender.texture;
 
-        this.geometry = new SphereBufferGeometry(this.size, 30, 15);
-        this.material = new ShaderMaterial({
+        const geometry = new SphereBufferGeometry(this.size, 30, 15);
+        const material = new ShaderMaterial({
             uniforms: {
                 lightdir: { value: this.sunPosition },
                 lunardir: { value: new Cartesian3(0, -0.2, 1) },
@@ -141,7 +143,12 @@ export default class Sky extends Mesh {
             side: BackSide,
         });
 
-        this.material.needsUpdate = true;
+        const mesh = new Mesh(geometry, material);
+
+        mesh.material.needsUpdate = true;
+        this.addObject(mesh);
+
+        this.mesh = mesh;
 
         this.update();
     }
@@ -181,7 +188,7 @@ export default class Sky extends Mesh {
         this.materialSky.uniforms.cloud_covr.value = setting.cloud_covr;
         this.materialSky.uniforms.cloud_dens.value = setting.cloud_dens;
         this.materialSky.uniforms.lightdir.value = this.sunPosition;
-        this.material.uniforms.lightdir.value = this.sunPosition;
+        (this.mesh.material as ShaderMaterial).uniforms.lightdir.value = this.sunPosition;
 
         this.needsUpdate = true;
 
@@ -219,7 +226,7 @@ export default class Sky extends Mesh {
     }
 
     render(frameState: FrameState): void {
-        // frameState.renderer.render(this.sceneSky, this.camera);
+        frameState.renderer.render(this.sceneSky, this.camera);
 
         if (this.needsUpdate) {
             this.cubeCamera.update(this.scene.renderer, this.sceneSky);
