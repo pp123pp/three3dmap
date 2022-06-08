@@ -68,6 +68,8 @@ export default class Sky extends Mesh {
     day = 0;
 
     material: ShaderMaterial;
+
+    bgScene = new Scene();
     constructor(scene: MapScene) {
         super();
 
@@ -243,6 +245,8 @@ export default class Sky extends Mesh {
 
         this.needsUpdate = true;
 
+        this.sun.position.applyAxisAngle(new Cartesian3(1, 0, 0), Math.PI / 2);
+
         if (!this.visible) this.visible = true;
     }
 
@@ -276,13 +280,6 @@ export default class Sky extends Mesh {
     render(frameState: FrameState): void {
         // frameState.renderer.render(this.sceneSky, this.camera);
 
-        if (this.needsUpdate) {
-            this.cubeCamera.update(this.scene.renderer, this.sceneSky);
-            this.needsUpdate = false;
-        }
-    }
-
-    cameraUpdate(): void {
         if (this.needsUpdate) {
             this.cubeCamera.update(this.scene.renderer, this.sceneSky);
             this.needsUpdate = false;

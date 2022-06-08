@@ -40,7 +40,7 @@ export default class TileMeshCommand extends Mesh {
 
         const material = this.material as TileMaterial;
 
-        const materialKey = isBITS12.toString() + defined(material.defines['QUANTIZATION_BITS12']).toString() + uniformMapProperties.dayTextures.length + surfaceShaderSetOptions.numberOfDayTextures;
+        const materialKey = isBITS12.toString() + uniformMapProperties.dayTextures.length;
 
         if (!defined(this.derivedCommands.tileMaterial[materialKey])) {
             const material = new TileMaterial({

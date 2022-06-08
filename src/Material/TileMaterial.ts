@@ -164,7 +164,7 @@ class TileMaterial extends ShaderMaterial {
 
         this.defines['APPLY_GAMMA'] = '';
         this.defines['INCLUDE_WEB_MERCATOR_Y'] = '';
-        this.defines.TEXTURE_UNITS = surfaceShaderSetOptions.numberOfDayTextures;
+        // this.defines.TEXTURE_UNITS = surfaceShaderSetOptions.numberOfDayTextures;
 
         if (isBITS12) {
             this.defines['QUANTIZATION_BITS12'] = '';
@@ -297,11 +297,11 @@ class TileMaterial extends ShaderMaterial {
         uniform vec4 diffuse;
         
         
-        #if TEXTURE_UNITS > 0
-            uniform sampler2D u_dayTextures[TEXTURE_UNITS];
-            uniform vec4 u_dayTextureTranslationAndScale[TEXTURE_UNITS];
-            uniform bool u_dayTextureUseWebMercatorT[TEXTURE_UNITS];
-            uniform vec4 u_dayTextureTexCoordsRectangle[TEXTURE_UNITS];
+        #if ${numberOfDayTextures} > 0
+            uniform sampler2D u_dayTextures[${numberOfDayTextures}];
+            uniform vec4 u_dayTextureTranslationAndScale[${numberOfDayTextures}];
+            uniform bool u_dayTextureUseWebMercatorT[${numberOfDayTextures}];
+            uniform vec4 u_dayTextureTexCoordsRectangle[${numberOfDayTextures}];
         #endif
         
         

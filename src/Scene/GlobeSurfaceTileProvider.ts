@@ -400,10 +400,6 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
             command.boundingVolume = new BoundingSphere();
             command.orientedBoundingBox = undefined;
 
-            // command.material = new TileMaterial({
-            //     side: DoubleSide,
-            // });
-
             uniformMap = createTileUniformMap(frameState, tileProvider);
 
             tileProvider._drawCommands.push(command);
@@ -602,98 +598,6 @@ const addDrawCommandsForTile = (tileProvider: GlobeSurfaceTileProvider, tile: Qu
             }
             ++numberOfDayTextures;
         }
-
-        // if (numberOfDayTextures === 0) {
-        //     debugger;
-        //     let imageryIndex2 = 0;
-        //     while (numberOfDayTextures < maxTextures && imageryIndex2 < imageryLen) {
-        //         const tileImagery = tileImageryCollection[imageryIndex2];
-        //         const imagery = tileImagery.readyImagery;
-        //         ++imageryIndex2;
-
-        //         if (!defined(imagery) || imagery.imageryLayer.alpha === 0.0) {
-        //             continue;
-        //         }
-
-        //         const texture = tileImagery.useWebMercatorT ? imagery.textureWebMercator : imagery.texture;
-
-        //         const imageryLayer = imagery.imageryLayer;
-
-        //         if (!defined(tileImagery.textureTranslationAndScale)) {
-        //             tileImagery.textureTranslationAndScale = imageryLayer._calculateTextureTranslationAndScale(tile, tileImagery);
-        //         }
-
-        //         uniformMapProperties.dayTextures[numberOfDayTextures] = texture;
-        //         uniformMapProperties.dayTextureTranslationAndScale[numberOfDayTextures] = tileImagery.textureTranslationAndScale;
-        //         uniformMapProperties.dayTextureTexCoordsRectangle[numberOfDayTextures] = tileImagery.textureCoordinateRectangle;
-        //         uniformMapProperties.dayTextureUseWebMercatorT[numberOfDayTextures] = tileImagery.useWebMercatorT;
-
-        //         uniformMapProperties.dayTextureAlpha[numberOfDayTextures] = imageryLayer.alpha;
-        //         applyAlpha = applyAlpha || uniformMapProperties.dayTextureAlpha[numberOfDayTextures] !== 1.0;
-
-        //         uniformMapProperties.dayTextureNightAlpha[numberOfDayTextures] = imageryLayer.nightAlpha;
-        //         applyDayNightAlpha = applyDayNightAlpha || uniformMapProperties.dayTextureNightAlpha[numberOfDayTextures] !== 1.0;
-
-        //         uniformMapProperties.dayTextureDayAlpha[numberOfDayTextures] = imageryLayer.dayAlpha;
-        //         applyDayNightAlpha = applyDayNightAlpha || uniformMapProperties.dayTextureDayAlpha[numberOfDayTextures] !== 1.0;
-
-        //         uniformMapProperties.dayTextureBrightness[numberOfDayTextures] = imageryLayer.brightness;
-        //         applyBrightness = applyBrightness || uniformMapProperties.dayTextureBrightness[numberOfDayTextures] !== ImageryLayer.DEFAULT_BRIGHTNESS;
-
-        //         uniformMapProperties.dayTextureContrast[numberOfDayTextures] = imageryLayer.contrast;
-        //         applyContrast = applyContrast || uniformMapProperties.dayTextureContrast[numberOfDayTextures] !== ImageryLayer.DEFAULT_CONTRAST;
-
-        //         uniformMapProperties.dayTextureHue[numberOfDayTextures] = imageryLayer.hue;
-        //         applyHue = applyHue || uniformMapProperties.dayTextureHue[numberOfDayTextures] !== ImageryLayer.DEFAULT_HUE;
-
-        //         uniformMapProperties.dayTextureSaturation[numberOfDayTextures] = imageryLayer.saturation;
-        //         applySaturation = applySaturation || uniformMapProperties.dayTextureSaturation[numberOfDayTextures] !== ImageryLayer.DEFAULT_SATURATION;
-
-        //         uniformMapProperties.dayTextureOneOverGamma[numberOfDayTextures] = 1.0 / imageryLayer.gamma;
-        //         applyGamma = applyGamma || uniformMapProperties.dayTextureOneOverGamma[numberOfDayTextures] !== 1.0 / ImageryLayer.DEFAULT_GAMMA;
-
-        //         uniformMapProperties.dayTextureSplit[numberOfDayTextures] = imageryLayer.splitDirection;
-        //         applySplit = applySplit || uniformMapProperties.dayTextureSplit[numberOfDayTextures] !== 0.0;
-
-        //         // Update cutout rectangle
-        //         let dayTextureCutoutRectangle = uniformMapProperties.dayTextureCutoutRectangles[numberOfDayTextures];
-        //         if (!defined(dayTextureCutoutRectangle)) {
-        //             dayTextureCutoutRectangle = uniformMapProperties.dayTextureCutoutRectangles[numberOfDayTextures] = new Cartesian4();
-        //         }
-
-        //         Cartesian4.clone(Cartesian4.ZERO, dayTextureCutoutRectangle);
-        //         if (defined(imageryLayer.cutoutRectangle)) {
-        //             const cutoutRectangle = clipRectangleAntimeridian(cartographicTileRectangle, imageryLayer.cutoutRectangle);
-        //             const intersection = Rectangle.simpleIntersection(cutoutRectangle, cartographicTileRectangle, rectangleIntersectionScratch);
-        //             applyCutout = defined(intersection) || applyCutout;
-
-        //             dayTextureCutoutRectangle.x = (cutoutRectangle.west - cartographicTileRectangle.west) * inverseTileWidth;
-        //             dayTextureCutoutRectangle.y = (cutoutRectangle.south - cartographicTileRectangle.south) * inverseTileHeight;
-        //             dayTextureCutoutRectangle.z = (cutoutRectangle.east - cartographicTileRectangle.west) * inverseTileWidth;
-        //             dayTextureCutoutRectangle.w = (cutoutRectangle.north - cartographicTileRectangle.south) * inverseTileHeight;
-        //         }
-
-        //         // Update color to alpha
-        //         let colorToAlpha = uniformMapProperties.colorsToAlpha[numberOfDayTextures];
-        //         if (!defined(colorToAlpha)) {
-        //             colorToAlpha = uniformMapProperties.colorsToAlpha[numberOfDayTextures] = new Cartesian4();
-        //         }
-
-        //         const hasColorToAlpha = defined(imageryLayer.colorToAlpha) && imageryLayer.colorToAlphaThreshold > 0.0;
-        //         applyColorToAlpha = applyColorToAlpha || hasColorToAlpha;
-
-        //         if (hasColorToAlpha) {
-        //             const color = imageryLayer.colorToAlpha;
-        //             colorToAlpha.x = color.red;
-        //             colorToAlpha.y = color.green;
-        //             colorToAlpha.z = color.blue;
-        //             colorToAlpha.w = imageryLayer.colorToAlphaThreshold;
-        //         } else {
-        //             colorToAlpha.w = -1.0;
-        //         }
-        //         ++numberOfDayTextures;
-        //     }
-        // }
 
         uniformMapProperties.dayTextures.length = numberOfDayTextures;
         // uniformMapProperties.waterMask = waterMaskTexture;

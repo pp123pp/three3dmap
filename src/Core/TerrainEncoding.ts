@@ -377,6 +377,14 @@ export default class TerrainEncoding {
     decodeTextureCoordinates(buffer: any, index: number, result = new Cartesian2()): Cartesian2 {
         index *= this.stride;
 
+        if (!defined(buffer)) {
+            return new Cartesian2();
+        }
+
+        if (!defined(buffer[index + 2]) || !defined(buffer[index + 4]) || !defined(buffer[index + 5])) {
+            debugger;
+        }
+
         if (this.quantization === TerrainQuantization.BITS12) {
             return AttributeCompression.decompressTextureCoordinates(buffer[index + 2], result);
         }

@@ -175,7 +175,6 @@ function executeCommandsInViewport(firstViewport: boolean, scene: MapScene, back
         executeComputeCommands(scene);
     }
 
-    scene.renderer.clear();
     scene.sky.render(scene.frameState);
     scene.effectComposerCollection.render();
 }

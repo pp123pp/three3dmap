@@ -18,11 +18,11 @@ import Viewer from './Widgets/Viewer/Viewer';
 const gui = new GUI();
 
 const widget = new Viewer('app', {
-    terrainProvider: new CesiumTerrainProvider({
-        url: IonResource.fromAssetId(1),
-        requestVertexNormals: false,
-        requestWaterMask: false,
-    }),
+    // terrainProvider: new CesiumTerrainProvider({
+    //     url: IonResource.fromAssetId(1),
+    //     requestVertexNormals: false,
+    //     requestWaterMask: false,
+    // }),
 });
 
 const { scene, camera } = widget;
@@ -50,6 +50,8 @@ scene.imageryLayers.addImageryProvider(
 
 // scene.imageryLayers.addImageryProvider(new TileCoordinatesImageryProvider());
 scene.globe.visible = false;
+
+// scene.sky.visible = false;
 
 //创建影像服务对象
 scene.imageryLayers.addImageryProvider(
@@ -83,6 +85,7 @@ const params = {
     setView: true,
     moveUp: true,
     moveRight: true,
+    azimuth: 90,
     cloud_covr: 0.3,
     hour: 12,
 };
@@ -107,6 +110,16 @@ gui.add(params, 'moveUp').onChange(() => {
 gui.add(params, 'moveRight').onChange(() => {
     // camera.position.set(0, 0, 55972529.261725195);
     console.log(camera);
+});
+
+gui.add(params, 'azimuth', 0, 360).onChange((value: number) => {
+    scene.sky.setting.azimuth = value;
+    scene.sky.update();
+});
+
+gui.add(params, 'cloud_covr', 0, 1).onChange((value: number) => {
+    scene.sky.setting.cloud_covr = value;
+    scene.sky.update();
 });
 
 gui.add(params, 'hour', 0, 24, 0.1).onChange((value: number) => {
