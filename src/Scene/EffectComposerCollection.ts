@@ -12,7 +12,7 @@ class EffectComposerCollection {
 
         const renderPass: RenderPass = new RenderPass(scene, scene.camera.frustum);
 
-        // renderPass.clear = false;
+        renderPass.clear = false;
         this.mainEffectComposer.addPass(renderPass);
     }
 

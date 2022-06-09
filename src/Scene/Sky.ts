@@ -1,6 +1,5 @@
 import Cartesian3 from '@/Core/Cartesian3';
-import { AdditiveBlending, BackSide, Color, CubeCamera, CubeTexture, DirectionalLight, IcosahedronGeometry, LinearMipmapLinearFilter, Mesh, Object3D, PerspectiveCamera, RepeatWrapping, RGBFormat, Scene, ShaderMaterial, SphereBufferGeometry, Spherical, Sprite, SpriteMaterial, sRGBEncoding, Texture, TextureLoader, WebGLCubeRenderTarget } from 'three';
-import { Lensflare, LensflareElement } from 'three/examples/jsm/objects/Lensflare';
+import { BackSide, Color, CubeCamera, CubeTexture, IcosahedronGeometry, LinearMipmapLinearFilter, Mesh, Object3D, PerspectiveCamera, RepeatWrapping, RGBAFormat, RGBFormat, Scene, ShaderMaterial, SphereBufferGeometry, Spherical, sRGBEncoding, Texture, TextureLoader, WebGLCubeRenderTarget } from 'three';
 import base_vs from '../Shader/sky/base_vs.glsl';
 import dome_fs from '../Shader/sky/dome_fs.glsl';
 import sky_fs from '../Shader/sky/sky_fs.glsl';
@@ -10,7 +9,7 @@ import MapScene from './MapScene';
 import Moon from './Moon';
 import Sun from './Sun';
 
-console.log(base_vs);
+const originPs = new Cartesian3();
 
 export default class Sky extends Object3D {
     readonly scene: MapScene;
@@ -34,12 +33,8 @@ export default class Sky extends Object3D {
 
     noiseMap: Texture;
 
-    moonMaterial = new SpriteMaterial({ map: this.textureLoader.load('./assets/textures/sky/lensflare2.png'), opacity: 0.3 });
-
     visible = false;
-    castShadow = false;
-    receiveShadow = false;
-    needsUpdate = false;
+
     torad = 0.0174532925199432957;
 
     sun: Sun;
@@ -50,11 +45,9 @@ export default class Sky extends Object3D {
     sunPosition = new Cartesian3();
     moonPosition = new Cartesian3();
 
-    lensflare = new Lensflare();
-
     materialSky: ShaderMaterial;
 
-    cubeCameraRender: WebGLCubeRenderTarget;
+    cubeCameraTarget: WebGLCubeRenderTarget;
 
     cubeCamera: CubeCamera;
 
@@ -64,24 +57,22 @@ export default class Sky extends Object3D {
     g = 0;
     b = 0;
 
-    // material: ShaderMaterial;
-
-    bgScene = new Scene();
-
     mesh: Mesh;
+
+    needsUpdate = false;
     constructor(scene: MapScene) {
         super();
 
         this.sceneSky.rotateX(-Math.PI / 2);
         this.scene = scene;
 
-        this.camera = new PerspectiveCamera();
+        this.camera = new PerspectiveCamera(45, scene.canvas.clientWidth / scene.canvas.clientHeight, 0.1, 20000);
 
         this.sun = new Sun(this.size);
-        this.scene.addObject(this.sun);
+        this.addObject(this.sun);
 
         this.moon = new Moon(this.size);
-        this.scene.addObject(this.moon);
+        this.addObject(this.moon);
 
         this.noiseMap = new TextureLoader().load('./assets/textures/sky/noise.png', (texture) => {
             texture.wrapS = texture.wrapT = RepeatWrapping;
@@ -113,21 +104,28 @@ export default class Sky extends Object3D {
         const cmesh = new Mesh(t, this.materialSky);
         this.sceneSky.add(cmesh);
 
-        this.cubeCameraRender = new WebGLCubeRenderTarget(this.skyResolution, {
-            format: RGBFormat,
+        this.cubeCameraTarget = new WebGLCubeRenderTarget(this.skyResolution, {
+            format: RGBAFormat,
             generateMipmaps: true,
             minFilter: LinearMipmapLinearFilter,
             encoding: sRGBEncoding,
         });
 
-        this.cubeCamera = new CubeCamera(0.5, 200, this.cubeCameraRender);
+        this.cubeCamera = new CubeCamera(0.5, 200, this.cubeCameraTarget);
 
         this.sceneSky.add(this.cubeCamera);
+        this.envMap = this.cubeCameraTarget.texture;
 
-        this.envMap = this.cubeCameraRender.texture;
+        this.mesh = this.createMesh();
+        this.addObject(this.mesh);
 
+        this.update();
+    }
+
+    createMesh(): Mesh {
         const geometry = new SphereBufferGeometry(this.size, 30, 15);
         const material = new ShaderMaterial({
+            // wireframe: true,
             uniforms: {
                 lightdir: { value: this.sunPosition },
                 lunardir: { value: new Cartesian3(0, -0.2, 1) },
@@ -144,23 +142,22 @@ export default class Sky extends Object3D {
         });
 
         const mesh = new Mesh(geometry, material);
-
         mesh.material.needsUpdate = true;
-        this.addObject(mesh);
-
-        this.mesh = mesh;
-
-        this.update();
+        return mesh;
     }
 
     updateRotation(mainCamera: MapCamera): void {
-        // if (this.camera.aspect !== mainCamera.frustum.aspect) {
-        //     this.camera.aspect = mainCamera.frustum.aspect;
-        //     this.camera.updateProjectionMatrix();
-        // }
-        // this.camera.rotation.copy(mainCamera.frustum.rotation);
-        // this.camera.rotateX(Math.PI / 2);
+        if (this.camera.aspect !== mainCamera.frustum.aspect) {
+            this.camera.aspect = mainCamera.frustum.aspect;
+            this.camera.updateProjectionMatrix();
+        }
+
+        this.camera.matrixWorld.copy(mainCamera.frustum.matrixWorld);
+        this.camera.matrixWorld.decompose(this.camera.position, this.camera.quaternion, this.camera.scale);
+
+        this.camera.position.set(0, 0, 0);
     }
+
     update(): void {
         const setting = this.setting;
 
@@ -193,7 +190,9 @@ export default class Sky extends Object3D {
         this.needsUpdate = true;
 
         this.sun.position.applyAxisAngle(new Cartesian3(1, 0, 0), Math.PI / 2);
+        this.sun.updateMatrixWorld();
         this.moon.position.applyAxisAngle(new Cartesian3(1, 0, 0), Math.PI / 2);
+        this.moon.updateMatrixWorld();
 
         if (!this.visible) this.visible = true;
     }
@@ -226,7 +225,7 @@ export default class Sky extends Object3D {
     }
 
     render(frameState: FrameState): void {
-        frameState.renderer.render(this.sceneSky, this.camera);
+        frameState.renderer.render(this, this.camera);
 
         if (this.needsUpdate) {
             this.cubeCamera.update(this.scene.renderer, this.sceneSky);

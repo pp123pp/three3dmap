@@ -16,7 +16,9 @@ import { TweenCollection } from '@/Core/TweenCollection';
 import { ComputeEngine } from '@/Renderer/ComputeEngine';
 import Context from '@/Renderer/Context';
 import MapRenderer from '@/Renderer/MapRenderer';
+import { Controls } from '@/Type';
 import { Scene, Vector2, WebGLRendererParameters, WebGLRenderTarget } from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposerCollection } from './EffectComposerCollection';
 import FrameState from './FrameState';
 import { Globe } from './Globe';
@@ -175,7 +177,7 @@ function executeCommandsInViewport(firstViewport: boolean, scene: MapScene, back
     if (firstViewport) {
         executeComputeCommands(scene);
     }
-
+    scene.renderer.clear();
     scene.sky.render(scene.frameState);
     scene.effectComposerCollection.render();
 }
@@ -211,7 +213,7 @@ export default class MapScene extends Scene {
     public backgroundColor = new CesiumColor(1.0, 0.0, 0.0, 1.0);
     readonly effectComposerCollection: EffectComposerCollection;
 
-    readonly screenSpaceCameraController: ScreenSpaceCameraController;
+    readonly screenSpaceCameraController: Controls;
     mapProjection = new GeographicProjection();
 
     _globe?: Globe;
@@ -258,6 +260,8 @@ export default class MapScene extends Scene {
 
         this.screenSpaceCameraController = new ScreenSpaceCameraController(this);
 
+        // this.screenSpaceCameraController = new OrbitControls(this.camera.f);
+
         const ellipsoid = defaultValue(this.mapProjection.ellipsoid, Ellipsoid.WGS84);
         this._globe = new Globe(ellipsoid);
 
@@ -266,8 +270,6 @@ export default class MapScene extends Scene {
         this.addObject(this.meshCollection);
 
         this.sky = new Sky(this);
-
-        this.addObject(this.sky);
 
         this.addObject(this.lights);
     }

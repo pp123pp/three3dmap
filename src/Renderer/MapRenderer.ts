@@ -10,7 +10,7 @@ export default class MapRenderer extends WebGLRenderer {
         this.toneMapping = LinearToneMapping;
         this.toneMappingExposure = 1.0;
         this.outputEncoding = sRGBEncoding;
-        // this.autoClear = false;
+        this.autoClear = false;
         this.setClearColor(0x262121);
         // this.setClearColor(0xff0000);
     }
